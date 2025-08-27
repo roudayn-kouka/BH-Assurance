@@ -58,11 +58,11 @@ class SalesAgent:
         user_data = fetch_user_data(self.user_id)
 
         # Déterminer si rappel facture ou reco produit
-        if user_data.get("bills_due"):
-            strategy = SALES_STRATEGIES.get("remind_unpaid_bill")
-        elif user_data.get("recommended_products"):
-            strategy = SALES_STRATEGIES.get("recommend_product")
 
+        if user_data.get("recommended_products"):
+            strategy = SALES_STRATEGIES.get("pitch_initial")
+        if strategy is None:
+            raise ValueError("No strategy loaded. Make sure your strategy config is set correctly.")
         # Run LLM
         response = query_llm(strategy, user_data,"","il n'y a pas de message utilisateur",self.conversation_history)
 
@@ -73,7 +73,7 @@ class SalesAgent:
         """Répondre au client avec logique intent + infos manquantes"""
         user_data = fetch_user_data(self.user_id)
         intent = analyze_intent(user_message)
-        strategy = SALES_STRATEGIES.get(intent["intention"])
+        strategy = SALES_STRATEGIES.get(intent["intention"]["label"])
         # Si infos manquantes → collect d’abord
         print(f"detected intent: {intent['intention']}")
 

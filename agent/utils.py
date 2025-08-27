@@ -22,11 +22,8 @@ def fetch_user_data(user_id: str) -> Dict[str, Any]:
     }
 
     # Determine decision logic
-    if user_data["bills_due"]:
-        decision = "pay_existing"
-    elif None in (user_data["sector"], user_data["contact_info"].get("email")):
-        decision = "collect_missing_info"
-    elif user_data.get("recommended_products"):
+   
+    if user_data.get("recommended_products"):
         decision = "recommend_product"
     else:
         decision = "no_action"
