@@ -52,17 +52,19 @@ class SalesAgent:
     def __init__(self, user_id: str):
         self.user_id = user_id
         self.conversation_history = []
-
+        
     def agent_initiate(self) -> str:
         """Premier message : recommandation produit ou rappel facture"""
-        user_data = fetch_user_data(self.user_id)
+        user_data = fetch_new_user_data()
 
         # Déterminer si rappel facture ou reco produit
+        print("\n","="*50)
+        print(f"[agent main]: User data: {user_data}")
+        print("\n","="*50)
 
-        if user_data.get("recommended_products"):
-            strategy = SALES_STRATEGIES.get("pitch_initial")
-        if strategy is None:
-            raise ValueError("No strategy loaded. Make sure your strategy config is set correctly.")
+        
+        strategy = SALES_STRATEGIES.get("pitch_initial")
+
         # Run LLM
         response = query_llm(strategy, user_data,"","il n'y a pas de message utilisateur",self.conversation_history)
 
@@ -71,7 +73,7 @@ class SalesAgent:
 
     def respond(self, user_message: str) -> str:
         """Répondre au client avec logique intent + infos manquantes"""
-        user_data = fetch_user_data(self.user_id)
+        user_data = fetch_new_user_data()
         intent = analyze_intent(user_message)
         strategy = SALES_STRATEGIES.get(intent["intention"]["label"])
         # Si infos manquantes → collect d’abord

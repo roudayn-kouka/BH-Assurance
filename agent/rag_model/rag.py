@@ -3,7 +3,7 @@ from typing import List, Dict
 from sentence_transformers import SentenceTransformer
 import chromadb
 import os
-import sys
+import json
 import traceback
 import torch
 
@@ -115,11 +115,12 @@ def retrieve(query: str, top_k: int = TOP_K) -> List[Dict]:
         include=["documents", "metadatas"]  # ensure we return metadata
     )
         output = []
-        for doc in results:
+        for i, (doc, meta) in enumerate(zip(results["documents"][0], results["metadatas"][0]), start=1):
             output.append({
-                "document": getattr(doc, "page_content", ""),
-                "metadata": getattr(doc, "metadata", {}) or {}
+                "document": doc,
+                "metadata": meta   # keep it as dict
             })
+
         logger.info(f"Retrieved {len(output)} documents")
         return output
     except Exception as e:

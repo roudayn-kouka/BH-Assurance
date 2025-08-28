@@ -1,6 +1,6 @@
 data/
 mongo_data/
 chroma_data/
-".env" 
+.env
 datasets/
 __pycache__/

@@ -133,16 +133,19 @@ SALES_STRATEGIES = {
 }
 
 
-
 RAG_QUERY_PROMPT = """
-Vous aidez à récupérer un contexte pertinent pour un assistant commercial.
-Reformulez le message du client en une requête de recherche concise.
+Transformer la question de l'utilisateur en un ensemble de mots-clés et de phrases optimisés pour une recherche sémantique vectorielle, garantissant une grande pertinence.
+
+CONTRAINTES :
+- Ne pas inclure de labels ou de titres pour chaque partie dans la requête.
+- Générer uniquement les mots-clés et phrases optimisés, sans explications supplémentaires.
 
 Historique de conversation : {conversation_history}
 Message du client : {latest_user_message}
 
 Requête de recherche :
 """
+
 
 
 # -----------------------------

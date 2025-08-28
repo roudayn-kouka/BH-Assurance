@@ -1,53 +1,61 @@
 from typing import Dict, Any, List
 from rag_model import rag
 from intent_analysis import analyse_message
+import user_profile_conn
+import random
+from typing import Dict
 
-def fetch_user_data(user_id: str) -> Dict[str, Any]:
+def format_user_for_llm(user_data: Dict) -> str:
     """
-    Simulate fetching user data from the database for BH Assurance.
-    Returns structured information including decision and missing data.
+    Transform user data into a structured prompt-friendly format for an LLM.
+    Scores are omitted. A random placeholder name is added.
     """
-    # Simulation / placeholder data
-    user_data = {
-        "user_id": user_id,
-        "name": "Entreprise Alpha",     # could be a person or company
-        "type": "personne_morale",       # "personne_physique" or "personne_morale"
-        "purchased_products": ["Assurance Auto"],
-        "recommended_products": ["Assurance Santé Entreprise"],
-        "bills_due": ["Assurance Auto – échéance 2025-09-01"],
-        "contact_info": {"email": "mail@mail.com", "telephone": "12345678"},
-        "sector": None,   # sector d’activité manquant => exemple: "industrie agroalimentaire"
-        "age": 17,      # seulement pour personne physique
-        "family_status": "divorcé",   # seulement pour personne_physique
-    }
+    # Random placeholder name
+    placeholder_names = ["Alice Dupont", "Jean Martin", "Sophie Bernard", "Luc Durand"]
+    nom_utilisateur = random.choice(placeholder_names)
+    
+    type_user = user_data.get("type", "Inconnu")
+    
+    profil = user_data.get("profil", {})
+    situation = profil.get("situation_familiale", "Non renseigné")
+    secteur = profil.get("secteur", "Non renseigné")
+    profession = profil.get("profession", "Non renseigné")
+    age = profil.get("age", "Non renseigné")
+    
+    produits_possedes = user_data.get("produits_possedes", [])
+    produits_recommandes = user_data.get("produits_recommandes", [])
+    
+    # Format owned products
+    produits_possedes_str = ", ".join(produits_possedes) if produits_possedes else "Aucun"
+    
+    # Format recommended products without scores
+    produits_recommandes_str = "\n".join(
+        [f"- {p['nom']}" for p in produits_recommandes]
+    ) if produits_recommandes else "Aucun"
+    
+    llm_text = f"""
+Nom: {nom_utilisateur}
+Type d'utilisateur: {type_user}
+Profil:
+  - Situation familiale: {situation}
+  - Secteur: {secteur}
+  - Profession: {profession}
+  - Age: {age}
+Produits possédés: {produits_possedes_str}
+Produits recommandés:
+{produits_recommandes_str}
+"""
+    return llm_text.strip()
 
-    # Determine decision logic
-   
-    if user_data.get("recommended_products"):
-        decision = "recommend_product"
-    else:
-        decision = "no_action"
+def fetch_new_user_data() -> Dict[str, Any]:
+    raw_user_data = user_profile_conn.fetch_new_user()
+    clean_user_data = format_user_for_llm(raw_user_data)
+    return clean_user_data
 
-    # Identify missing fields
-    missing_fields: List[str] = []
-    if user_data["type"] == "personne_morale":
-        if not user_data["sector"]:
-            missing_fields.append("secteur d'activité")
-    if user_data["type"] == "personne_physique":
-        if not user_data["age"]:
-            missing_fields.append("âge")
-        if not user_data["family_status"]:
-            missing_fields.append("situation familiale")
-    if not user_data["contact_info"].get("email"):
-        missing_fields.append("adresse e-mail")
-    if not user_data["contact_info"].get("telephone"):
-        missing_fields.append("numéro de téléphone")
-
-    # Augment with decision and missing info
-    user_data["decision"] = decision
-    user_data["missing_fields"] = missing_fields
-
-    return user_data
+def fetch_existing_user_data(user_id:int) -> Dict[str, Any]:
+    raw_user_data = user_profile_conn.fetch_existing_user(user_id)
+    clean_user_data = format_user_for_llm(raw_user_data)
+    return clean_user_data
 
 
 def query_rag(query: str) -> str:
