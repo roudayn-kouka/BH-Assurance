@@ -1,0 +1,17 @@
+{
+  "name": "bh-assurance-backend",
+  "version": "1.0.0",
+  "description": "Backend pour BH Assurance",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "assurance",
+    "dashboard",
+    "api"
+  ],
+  "author": "BH Assurance",
+  "license": "MIT"
+}
