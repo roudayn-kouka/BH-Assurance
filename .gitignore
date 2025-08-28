@@ -4,3 +4,4 @@ chroma_data/
 .env
 datasets/
 __pycache__/
+*.csv
