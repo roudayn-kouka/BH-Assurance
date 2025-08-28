@@ -13,5 +13,12 @@
     "api"
   ],
   "author": "BH Assurance",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.18.0"
+  }
 }
