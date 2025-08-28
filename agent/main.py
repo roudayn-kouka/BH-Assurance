@@ -83,7 +83,7 @@ class SalesAgent:
         else:
             rag_context = ""
 
-        
+        print(f"RAG Context: {rag_context}")
         response = query_llm(strategy, user_data,rag_context,user_message,self.conversation_history)
 
 

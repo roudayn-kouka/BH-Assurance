@@ -133,17 +133,30 @@ def retrieve_context(query: str, top_k: int = TOP_K) -> str:
     suitable to feed into an LLM prompt.
     """
     try:
+        logger.info(f"Retrieving context for query: {query} (top_k={top_k})")
         docs = retrieve(query, top_k)
+
         if not docs:
-            logger.warning("No documents retrieved for query")
+            logger.warning("No documents retrieved for query: %s", query)
             return ""
-        context = ""
+
+        logger.info("Retrieved %d documents for query: %s", len(docs), query)
         for idx, d in enumerate(docs, 1):
-            src = d['metadata'].get('source', 'unknown')
-            context += f"[Doc {idx} - {src}]\n{d['document']}\n\n"
+           print("[rag]: Raw doc %d: %s", idx, d)  # log the entire doc dict
+
+        context_parts = []
+        for idx, d in enumerate(docs, 1):
+            src = d.get('metadata', {}).get('source', 'unknown')
+            snippet = d.get('document')[:200].replace("\n", " ")  # log preview only
+            print("[RAG]: Doc %d from %s (preview: %s...)", idx, src, snippet)
+            context_parts.append(f"[Doc {idx} - {src}]\n{d['document']}\n\n")
+
+        context = "".join(context_parts)
+        logger.info("Final context length: %d characters", len(context))
         return context
+
     except Exception as e:
-        logger.exception("Error creating context for LLM: "+e)
+        logger.exception("Error creating context for LLM: %s", str(e))
         return ""
 
 

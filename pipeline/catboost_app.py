@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import pandas as pd
-from pipeline.db_utils import get_connection  # ✅ absolute import
+from db_utils import get_connection  # ✅ absolute import
 
 app = FastAPI()
 

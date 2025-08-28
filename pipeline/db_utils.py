@@ -1,6 +1,6 @@
 # db_utils.py
 import pyodbc
-from .db_config import conn_str
+from db_config import conn_str
 
 def get_connection():
     """Create a new database connection."""

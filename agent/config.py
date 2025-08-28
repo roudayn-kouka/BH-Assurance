@@ -136,8 +136,7 @@ SALES_STRATEGIES = {
 
 RAG_QUERY_PROMPT = """
 Vous aidez à récupérer un contexte pertinent pour un assistant commercial.
-Reformulez le message du client en une requête de recherche concise,
-ne contenant que les mots-clés importants (sans salutations ni mots inutiles).
+Reformulez le message du client en une requête de recherche concise.
 
 Historique de conversation : {conversation_history}
 Message du client : {latest_user_message}

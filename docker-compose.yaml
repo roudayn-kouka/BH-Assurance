@@ -68,6 +68,15 @@ services:
     volumes:
       - ./datasets:/var/opt/mssql/backups # ✅ ne monte que le dossier de backups
     restart: unless-stopped
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    container_name: sqlpad
+    environment:
+      SQLPAD_ADMIN: "admin"
+      SQLPAD_ADMIN_PASSWORD: "admin123"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
 
 networks:
   internal:

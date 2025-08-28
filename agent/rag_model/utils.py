@@ -123,7 +123,8 @@ def process_documents(docs, file_path, category, collection, existing_ids, model
     for i, doc in enumerate(docs):
         chunk_id = f"{chunk_prefix}_{i}"
         base_metadata = build_metadata(file_path, file_path.name, category, i, len(doc.page_content))
-
+        if not len(doc.page_content):
+            print(f"Empty text at chunk {i}, skipping")
         if chunk_id in existing_map:
             existing_meta = existing_map[chunk_id]["metadata"] or {}
             for k, v in base_metadata.items():
