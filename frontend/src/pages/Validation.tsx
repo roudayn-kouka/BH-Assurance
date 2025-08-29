@@ -45,14 +45,14 @@ export default function Validation() {
       try {
         setLoading(true)
         const response = await fetch('http://localhost:5000/api/messages/pending')
-        
+
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`)
         }
-        
+
         const data: PendingMessage[] = await response.json()
         setPendingMessages(data)
-        
+
         // Extraire les clients uniques des messages
         const uniqueClients = data.reduce((acc: Client[], message) => {
           if (message.client && !acc.find(c => c._id === message.client?._id)) {
@@ -60,9 +60,9 @@ export default function Validation() {
           }
           return acc
         }, [])
-        
+
         setClients(uniqueClients)
-        
+
       } catch (err) {
         console.error('Erreur fetch pending messages:', err)
         toast({
@@ -70,7 +70,7 @@ export default function Validation() {
           description: "Impossible de charger les messages en attente",
           variant: "destructive",
         })
-        
+
         // Fallback vers les données mockées
         setClients([
           {
@@ -81,14 +81,14 @@ export default function Validation() {
             statut: "actif"
           },
           {
-            _id: "2", 
+            _id: "2",
             nom: "Karim Sassi",
             email: "karim.sassi@gmail.com",
             telephone: "+216 98 123 456",
             statut: "actif"
           }
         ])
-        
+
         setPendingMessages([
           {
             _id: "1",
@@ -136,7 +136,7 @@ export default function Validation() {
 
         // Mettre à jour la liste locale
         setPendingMessages(prev => prev.filter(msg => msg._id !== messageId))
-        
+
         // Mettre à jour la liste des clients si nécessaire
         const updatedMessages = pendingMessages.filter(msg => msg._id !== messageId)
         const remainingClientIds = new Set(updatedMessages.map(msg => msg.client?._id))
@@ -168,7 +168,7 @@ export default function Validation() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           corps: editedContent,
           justification: "Modifié par administrateur"
         })
@@ -225,8 +225,8 @@ export default function Validation() {
     return (
       <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setSelectedClient(null)}
             className="flex items-center gap-2"
           >
@@ -272,17 +272,17 @@ export default function Validation() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button 
+                  <Button
                     onClick={() => handleValider(message._id)}
                     className="bg-success hover:bg-success/90"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Valider
                   </Button>
-                  
+
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => handleModifier(message)}
                       >
@@ -304,7 +304,7 @@ export default function Validation() {
                         placeholder="Modifiez la réponse..."
                       />
                       <DialogFooter>
-                        <Button 
+                        <Button
                           onClick={handleConfirmerModification}
                           className="bg-success hover:bg-success/90"
                         >
@@ -318,7 +318,7 @@ export default function Validation() {
                   {message.justification && (
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button 
+                        <Button
                           variant="outline"
                           onClick={() => setShowArgumentation(message)}
                         >
@@ -372,8 +372,8 @@ export default function Validation() {
           {clients.map((client) => {
             const clientMessages = messagesByClient[client._id] || []
             return (
-              <Card 
-                key={client._id} 
+              <Card
+                key={client._id}
                 className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-accent"
                 onClick={() => setSelectedClient(client)}
               >
@@ -400,7 +400,7 @@ export default function Validation() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">Statut</p>
-                      <Badge 
+                      <Badge
                         variant={client.statut === 'actif' ? 'default' : 'secondary'}
                         className={client.statut === 'actif' ? 'bg-green-100 text-green-800' : ''}
                       >

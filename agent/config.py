@@ -33,15 +33,12 @@ CONTRAINTES :
 - Ne jamais inventer de produits, services ou données client
 - Personnaliser dès que possible (secteur, besoin, situation)
 - Terminer par un appel à l’action clair
-- Si des informations manquent, poser des questions indirectes et naturelles
+- Si des informations sont manquantes, poser des questions indirectes et naturelles pour les obtenir
+- Générer uniquement le corps du mail, sans titres, labels ou explications supplémentaires
 
 FORMAT DE SORTIE (JSON) :
 {{
-  "intent": "<intent_detecté>",
-  "mail": {{
-    "subject": "<sujet du mail>"
-  }},
-  "body": "<corps_du_mail_en_français>"       # texte brut ou HTML simple selon ton usage
+    "<corps_du_mail_en_français>"       # texte brut ou HTML simple selon ton usage
 }}
 
 """

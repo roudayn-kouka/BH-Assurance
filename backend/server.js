@@ -61,7 +61,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Gestion des erreurs 404
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ message: 'Route non trouvée' });
 });
 
