@@ -1,189 +1,147 @@
+// src/app/historique/page.tsx
+
 import { useState, useEffect } from "react"
-import { ArrowLeft, MessageCircle, User, Loader2 } from "lucide-react"
+import { ArrowLeft, MessageCircle, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { EmailMessage, generateSubject } from "@/components/EmailMessage"
 
+// Types
 interface Client {
-  _id: string
+  id: string
   nom: string
   email: string
   telephone: string
-  statut: string
-  dateCreation?: string
-}
-
-interface Conversation {
-  _id: string
-  clientId: string
-  sujet: string
-  statut: string
   dernierContact: string
   nombreMessages: number
-  satisfaction: number
+  conversationTerminee: boolean
 }
 
 interface Message {
-  _id: string
-  conversationId: string
-  expediteur: "client" | "agent"
-  type: string
-  sujet: string
-  corps: string
-  statut: string
-  dateEnvoi?: string
-  createdAt: string
-}
-
-interface ApiResponse<T> {
-  clients?: T[]
-  conversations?: T[]
-  messages?: T[]
-  currentPage?: number
-  totalPages?: number
-  totalClients?: number
-  totalConversations?: number
-  totalMessages?: number
+  id: string
+  contenu: string
+  expediteur: "client" | "agent" | "ai"
+  timestamp: string
+  type?: "question" | "reponse"
+  body: string
+  sender: string
+  created_at: string
+  direction: "inbox" | "sent"
 }
 
 export default function Historique() {
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clients, setClients] = useState<Client[]>([])
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [messages, setMessages] = useState<Message[]>([])
+  const [conversations, setConversations] = useState<Record<string, Message[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
 
-  // Charger les clients depuis l'API
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchData = async () => {
       try {
-        setLoading(true)
-        const response = await fetch('http://localhost:5000/api/clients')
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`)
-        }
-        
-        const data: Client[] = await response.json()
-        setClients(data)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur de chargement')
-        console.error('Erreur fetch clients:', err)
-        
-        // Fallback vers les données mockées en cas d'erreur
-        setClients([
-          {
-            _id: "1",
-            nom: "Sarra Mabrouk",
-            email: "sarra.mabrouk@gmail.com",
-            telephone: "+216 22 345 678",
-            statut: "actif"
-          },
-          {
-            _id: "2", 
-            nom: "Karim Sassi",
-            email: "karim.sassi@gmail.com",
-            telephone: "+216 98 123 456",
-            statut: "actif"
-          },
-          {
-            _id: "3",
-            nom: "Ahmed Ben Ali",
-            email: "ahmed.benali@email.com",
-            telephone: "+216 20 123 456",
-            statut: "actif"
+        const token = localStorage.getItem('token')
+        if (!token) throw new Error('Non authentifié')
+
+        const headers = { 'Authorization': `Bearer ${token}` }
+
+        // 🔹 Charger les clients
+        const clientsRes = await fetch('http://localhost:3001/api/clients', { headers })
+        if (!clientsRes.ok) throw new Error('Échec du chargement des clients')
+
+        const clientsData = await clientsRes.json()
+
+        // ✅ Gestion de la réponse paginée : on extrait `clients` si présent
+        const clientsArray = Array.isArray(clientsData)
+          ? clientsData
+          : Array.isArray(clientsData.clients)
+            ? clientsData.clients
+            : []
+
+        const formattedClients: Client[] = clientsArray.map((c: any) => ({
+          id: c._id,
+          nom: `${c.first_name} ${c.last_name}`.trim() || 'Client inconnu',
+          email: c.email,
+          telephone: c.phone || 'Non renseigné',
+          dernierContact: new Date(c.last_contact_at).toLocaleString('fr-TN'),
+          nombreMessages: 0,
+          conversationTerminee: false
+        }))
+        setClients(formattedClients)
+
+        // 🔹 Charger les conversations et messages
+        const conversationsData: Record<string, Message[]> = {}
+        for (const client of formattedClients) {
+          const convRes = await fetch(`http://localhost:3001/api/conversations?client_id=${client.id}`, { headers })
+          const convs = await convRes.json()
+
+          let messages: Message[] = []
+          for (const conv of convs) {
+            const msgRes = await fetch(`http://localhost:3001/api/conversations/${conv._id}/messages`, { headers })
+            const msgs = await msgRes.json()
+
+            messages = messages.concat(
+              msgs.map((m: any) => ({
+                id: m._id,
+                contenu: m.body,
+                expediteur: m.sender === 'client' ? 'client' : 'agent',
+                timestamp: new Date(m.created_at).toLocaleString('fr-TN'),
+                body: m.body,
+                sender: m.sender,
+                created_at: m.created_at,
+                direction: m.direction,
+                type: m.sender === 'client' ? 'question' : 'reponse'
+              }))
+            )
+
+            // Mettre à jour statut
+            client.nombreMessages = messages.length
+            client.conversationTerminee = conv.is_completed
           }
-        ])
+
+          conversationsData[client.id] = messages.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+        }
+
+        setConversations(conversationsData)
+      } catch (err: any) {
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchClients()
+    fetchData()
   }, [])
 
-  // Charger les conversations d'un client sélectionné
-  useEffect(() => {
-    const fetchConversations = async () => {
-      if (!selectedClient) return
+  if (loading) return <div className="p-6">Chargement de l'historique...</div>
+  if (error) return <div className="p-6 text-red-500">Erreur: {error}</div>
 
-      try {
-        setLoading(true)
-        // Note: Votre backend actuel n'a pas d'endpoint spécifique pour les conversations par client
-        // On utilise donc toutes les conversations et on filtre côté client
-        const response = await fetch('http://localhost:5000/api/conversations')
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`)
-        }
-        
-        const data: Conversation[] = await response.json()
-        // Filtrer les conversations pour ce client
-        const clientConversations = data.filter(conv => conv.clientId === selectedClient._id)
-        setConversations(clientConversations)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur de chargement des conversations')
-        console.error('Erreur fetch conversations:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchConversations()
-  }, [selectedClient])
-
-  // Charger les messages d'une conversation
-  const fetchMessages = async (clientId: string) => {
-    try {
-      setLoading(true)
-      const response = await fetch('http://localhost:5000/api/messages/pending')
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`)
-      }
-      
-      const data: Message[] = await response.json()
-      // Filtrer les messages pour ce client (simulation)
-      const clientMessages = data.filter(msg => 
-        msg.conversationId === '1' // Adaptation temporaire
-      )
-      setMessages(clientMessages)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur de chargement des messages')
-      console.error('Erreur fetch messages:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading && clients.length === 0) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-bh-red" />
-          <p className="mt-2 text-muted-foreground">Chargement des clients...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error && clients.length === 0) {
+  // ✅ Si aucun client n'existe
+  if (!loading && clients.length === 0) {
     return (
       <div className="p-6">
-        <div className="bg-destructive/15 text-destructive p-4 rounded-md">
-          <p>Erreur: {error}</p>
-          <p className="text-sm mt-2">Utilisation des données de démonstration</p>
-        </div>
+        <h1 className="text-3xl font-bold text-primary mb-6">Historique des conversations</h1>
+        <Card className="text-center py-10">
+          <CardContent>
+            <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Aucun client trouvé</h3>
+            <p className="text-muted-foreground mb-4">
+              Aucun client n’a encore été créé dans le système.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Les conversations apparaîtront ici dès qu’un client interagira avec l’agent IA.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (selectedClient) {
+    const messages = conversations[selectedClient.id] || []
+    
     return (
       <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
@@ -218,13 +176,8 @@ export default function Historique() {
                 <p className="font-medium">{selectedClient.telephone}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Statut</p>
-                <Badge 
-                  variant={selectedClient.statut === 'actif' ? 'default' : 'secondary'}
-                  className={selectedClient.statut === 'actif' ? 'bg-green-100 text-green-800' : ''}
-                >
-                  {selectedClient.statut}
-                </Badge>
+                <p className="text-sm text-muted-foreground">Dernier contact</p>
+                <p className="font-medium">{selectedClient.dernierContact}</p>
               </div>
             </div>
           </CardContent>
@@ -234,42 +187,29 @@ export default function Historique() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              Historique des échanges
+              Historique des échanges ({messages.length} messages)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto text-bh-red" />
-                <p className="mt-2 text-muted-foreground">Chargement des messages...</p>
-              </div>
-            ) : messages.length > 0 ? (
-              <div className="space-y-4">
-                {messages.map((message) => {
-                  const isClient = message.expediteur === "client"
-                  return (
-                    <EmailMessage
-                      key={message._id}
-                      from={isClient ? selectedClient.nom : "Agent IA BH Assurance"}
-                      fromEmail={isClient ? selectedClient.email : "support@bh-assurance.tn"}
-                      to={isClient ? "Agent IA BH Assurance" : selectedClient.nom}
-                      toEmail={isClient ? "support@bh-assurance.tn" : selectedClient.email}
-                      subject={message.sujet || generateSubject('question', message.corps)}
-                      date={message.createdAt}
-                      body={message.corps}
-                      direction={isClient ? "inbox" : "sent"}
-                      tag={isClient ? "Question" : "Réponse"}
-                      status={message.statut}
-                    />
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Aucun message trouvé pour ce client</p>
-              </div>
-            )}
+            <div className="space-y-4">
+              {messages.map((message) => {
+                const isClient = message.expediteur === "client"
+                return (
+                  <EmailMessage
+                    key={message.id}
+                    from={isClient ? selectedClient.nom : "Agent IA BH Assurance"}
+                    fromEmail={isClient ? selectedClient.email : "support@bh-assurance.tn"}
+                    to={isClient ? "Agent IA BH Assurance" : selectedClient.nom}
+                    toEmail={isClient ? "support@bh-assurance.tn" : selectedClient.email}
+                    subject={generateSubject(message.type, message.contenu)}
+                    date={message.timestamp}
+                    body={message.contenu}
+                    direction={isClient ? "inbox" : "sent"}
+                    tag={message.type === "question" ? "Question" : "Réponse"}
+                  />
+                )
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -280,22 +220,12 @@ export default function Historique() {
     <div className="p-6">
       <h1 className="text-3xl font-bold text-primary mb-6">Historique des conversations</h1>
       
-      {error && (
-        <div className="bg-destructive/15 text-destructive p-4 rounded-md mb-4">
-          <p>Attention: {error}</p>
-          <p className="text-sm mt-2">Affichage des données de démonstration</p>
-        </div>
-      )}
-      
       <div className="grid gap-4">
         {clients.map((client) => (
           <Card 
-            key={client._id} 
+            key={client.id} 
             className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-bh-red"
-            onClick={() => {
-              setSelectedClient(client)
-              fetchMessages(client._id)
-            }}
+            onClick={() => setSelectedClient(client)}
           >
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -303,9 +233,14 @@ export default function Historique() {
                   <User className="h-5 w-5 text-bh-navy" />
                   {client.nom}
                 </CardTitle>
-                <Badge variant="outline" className="text-bh-navy border-bh-navy">
-                  Client {client.statut}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-bh-navy border-bh-navy">
+                    {client.nombreMessages} messages
+                  </Badge>
+                  <Badge variant={client.conversationTerminee ? "default" : "destructive"}>
+                    {client.conversationTerminee ? "Terminée" : "En cours"}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -319,13 +254,8 @@ export default function Historique() {
                   <p className="font-medium">{client.telephone}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Statut</p>
-                  <Badge 
-                    variant={client.statut === 'actif' ? 'default' : 'secondary'}
-                    className={client.statut === 'actif' ? 'bg-green-100 text-green-800' : ''}
-                  >
-                    {client.statut}
-                  </Badge>
+                  <p className="text-muted-foreground">Dernier contact</p>
+                  <p className="font-medium">{client.dernierContact}</p>
                 </div>
               </div>
             </CardContent>

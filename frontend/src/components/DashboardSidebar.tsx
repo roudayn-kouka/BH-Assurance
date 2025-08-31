@@ -1,4 +1,4 @@
-import { HistoryIcon, CheckCircle2 } from "lucide-react"
+import { HistoryIcon, CheckCircle2, BarChart3 } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import {
   Sidebar,
@@ -23,6 +23,11 @@ const menuItems = [
     title: "Validation des réponses",
     url: "/validation",
     icon: CheckCircle2,
+  },
+  {
+    title: "Analyse de Performance",
+    url: "/analytics",
+    icon: BarChart3,
   },
 ]
 
