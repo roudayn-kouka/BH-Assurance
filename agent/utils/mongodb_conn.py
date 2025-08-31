@@ -118,7 +118,7 @@ def append_message_to_conversation(
         # If no conversation is provided, create a new one
         if not conversation_id:
             conversation_doc = {
-                "clientId": ObjectId(client_id),
+                "clientId": client_id,
                 "sujet": sujet,
                 "statut": "ouverte",
                 "dernierContact": datetime.utcnow(),
@@ -130,7 +130,7 @@ def append_message_to_conversation(
 
         # Prepare the message document
         message_doc = {
-            "conversationId": ObjectId(conversation_id),
+            "conversationId": conversation_id,
             "expediteur": expediteur,
             "corps": corps,
             "type": msg_type,
@@ -143,7 +143,7 @@ def append_message_to_conversation(
 
         # Update number of messages in the conversation
         conversations_collection.find_one_and_update(
-            {"_id": ObjectId(conversation_id)},
+            {"_id": conversation_id},
             {
                 "$inc": {"nombreMessages": 1},
                 "$set": {"dernierContact": datetime.utcnow()},

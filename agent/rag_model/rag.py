@@ -19,12 +19,13 @@ MODEL_NAME = "intfloat/multilingual-e5-large"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
-FALLBACK_SMALL = "all-MiniLM-L6-v2"   # lightweight fallback
+FALLBACK_SMALL = "all-MiniLM-L6-v2"  # lightweight fallback
 FALLBACK_MEDIUM = "intfloat/multilingual-e5-base"  # medium fallback
+
 
 def _clear_cuda():
     if torch.cuda.is_available():
@@ -34,6 +35,7 @@ def _clear_cuda():
         except Exception:
             pass
 
+
 def _try_load(name, device, half=False):
     model = SentenceTransformer(name, device=device)
     if half and device.startswith("cuda"):
@@ -42,6 +44,7 @@ def _try_load(name, device, half=False):
         except Exception:
             pass
     return model
+
 
 def load_embedding_model(preferred=EMBEDDING_MODEL_NAME):
     # prefer cuda if available
@@ -60,7 +63,11 @@ def load_embedding_model(preferred=EMBEDDING_MODEL_NAME):
         err = str(e).lower()
         print("[loader] primary load failed:", err.splitlines()[0])
         # If it's an OOM-like error and we have cuda available, try strategies
-        if use_cuda and ("outofmemory" in err or "out of memory" in err or isinstance(e, torch.cuda.OutOfMemoryError)):
+        if use_cuda and (
+            "outofmemory" in err
+            or "out of memory" in err
+            or isinstance(e, torch.cuda.OutOfMemoryError)
+        ):
             try:
                 print("[loader] clearing cache and retrying (half precision)...")
                 _clear_cuda()
@@ -86,6 +93,8 @@ def load_embedding_model(preferred=EMBEDDING_MODEL_NAME):
             print("[loader] final fallback failed; raising original exception")
             traceback.print_exc()
             raise
+
+
 embedding_model = load_embedding_model()
 
 try:
@@ -110,16 +119,15 @@ def retrieve(query: str, top_k: int = TOP_K) -> List[Dict]:
         logger.info(f"Retrieving top {top_k} documents for query: {query}")
         query_embedding = embedding_model.encode([query])[0]
         results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas"]  # ensure we return metadata
-    )
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+            include=["documents", "metadatas"],  # ensure we return metadata
+        )
         output = []
-        for i, (doc, meta) in enumerate(zip(results["documents"][0], results["metadatas"][0]), start=1):
-            output.append({
-                "document": doc,
-                "metadata": meta   # keep it as dict
-            })
+        for i, (doc, meta) in enumerate(
+            zip(results["documents"][0], results["metadatas"][0]), start=1
+        ):
+            output.append({"document": doc, "metadata": meta})  # keep it as dict
 
         logger.info(f"Retrieved {len(output)} documents")
         return output
@@ -134,26 +142,24 @@ def retrieve_context(query: str, top_k: int = TOP_K) -> str:
     suitable to feed into an LLM prompt.
     """
     try:
-        logger.info(f"Retrieving context for query: {query} (top_k={top_k})")
+        print("=" * 50, f"\nRetrieving context for query: {query} (top_k={top_k})")
         docs = retrieve(query, top_k)
 
         if not docs:
             logger.warning("No documents retrieved for query: %s", query)
             return ""
 
-        logger.info("Retrieved %d documents for query: %s", len(docs), query)
-        for idx, d in enumerate(docs, 1):
-           print("[rag]: Raw doc %d: %s", idx, d)  # log the entire doc dict
+        print(f"\nRetrieved {len(docs)} documents for query: {query}")
 
         context_parts = []
         for idx, d in enumerate(docs, 1):
-            src = d.get('metadata', {}).get('source', 'unknown')
-            snippet = d.get('document')[:200].replace("\n", " ")  # log preview only
-            print("[RAG]: Doc %d from %s (preview: %s...)", idx, src, snippet)
+            src = d.get("metadata", {}).get("source", "unknown")
+
+            print(f"\nRAG]: Doc {idx} from {src} (preview: {d})\n")
             context_parts.append(f"[Doc {idx} - {src}]\n{d['document']}\n\n")
 
         context = "".join(context_parts)
-        logger.info("Final context length: %d characters", len(context))
+        print(f"\nFinal context length: {len(context)} characters\n", "=" * 50)
         return context
 
     except Exception as e:
@@ -166,7 +172,11 @@ if __name__ == "__main__":
     query = "Assurance vie décès"
     retrieved_docs = retrieve(query)
     for doc in retrieved_docs:
-        logger.info(f"Source: {doc['metadata'].get('source', 'unknown')}, Text snippet: {doc['document'][:200]}...")
-    
+        logger.info(
+            f"Source: {doc['metadata'].get('source', 'unknown')}, Text snippet: {doc['document'][:200]}..."
+        )
+
     context_str = retrieve_context(query)
-    logger.info(f"Concatenated context for LLM:\n{context_str[:500]}...")  # show first 500 chars
+    logger.info(
+        f"Concatenated context for LLM:\n{context_str[:500]}..."
+    )  # show first 500 chars

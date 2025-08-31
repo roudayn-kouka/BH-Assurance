@@ -1,7 +1,7 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 from rag_model import rag
 from intent_analysis import analyse_message
-import user_profile_conn
+from utils.user_profile_conn import *
 import random
 from typing import Dict
 
@@ -54,13 +54,13 @@ Produits recommandés:
 
 
 def fetch_new_user_data() -> Dict[str, Any]:
-    raw_user_data = user_profile_conn.fetch_new_user()
+    raw_user_data = fetch_new_user()
     clean_user_data = format_user_for_llm(raw_user_data)
-    return {"client_id": raw_user_data["client_id"], "user_data": clean_user_data}
+    return {"data": raw_user_data, "user_data_str": clean_user_data}
 
 
 def fetch_existing_user_data(user_id: int) -> Dict[str, Any]:
-    raw_user_data = user_profile_conn.fetch_existing_user(user_id)
+    raw_user_data = fetch_existing_user(user_id)
     clean_user_data = format_user_for_llm(raw_user_data)
     return clean_user_data
 
@@ -73,3 +73,48 @@ def query_rag(query: str) -> str:
 def analyze_intent(user_message: str) -> Dict[str, Any]:
     msg = user_message.lower()
     return analyse_message(msg)
+
+
+TEMPLATE_INITIAL_PITCH = """Explication de génération — Pitch initial
+
+1. Données utilisées :
+   Le message s’appuie sur les données disponibles relatives au client.
+
+2. Choix du produit :
+   Le produit mis en avant est {products}, retenu parce qu’il correspond aux besoins types identifiés à partir des données disponibles avec un score de confience de {confidence_score}.
+
+3. Ton et angle :
+   {system_prompt}
+
+"""
+
+TEMPLATE_RESPONDING = """Explication de génération — Réponse au message client
+
+1. Intention détectée :
+   L’agent a identifié : {intention} {intention_score}, ce qui oriente le niveau de détail et l’angle de réponse.
+
+2. Éléments pris en compte :
+   Produits/points évoqués dans la conversation : {products}.
+
+3. Ton et angle :
+   {system_prompt}
+
+"""
+
+
+def generate_explanation(
+    msg_type: str, products, system_prompt, intention="", confidence_score=0
+):
+    if msg_type == "initial pitch":
+        return (
+            TEMPLATE_INITIAL_PITCH.replace("{products}", str(products))
+            .replace("{system_prompt}", system_prompt)
+            .replace("{confidence_score}", str(confidence_score))
+        )
+    elif msg_type == "respond":
+        return (
+            TEMPLATE_RESPONDING.replace("{intention}", intention)
+            .replace("{products}", str(products))
+            .replace("{system_prompt}", system_prompt)
+            .replace("{intention_score}", confidence_score)
+        )

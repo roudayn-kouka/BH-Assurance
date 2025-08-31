@@ -1,9 +1,12 @@
-from llm_utils import LLM
+from utils.llm_utils import LLM
 import gc
 
-from utils import *
+from utils.general_utils import *
 from config import *
-from mongodb_conn import append_message_to_conversation, get_first_open_conversation
+from utils.mongodb_conn import (
+    append_message_to_conversation,
+    get_first_open_conversation,
+)
 
 
 # -----------------------------
@@ -19,17 +22,29 @@ class SalesAgent:
 
         # Déterminer si rappel facture ou reco produit
         print("\n", "=" * 50)
-        print(f"[agent main]: User data: {user_data}")
+        print(f'[agent main]: User data: {user_data["user_data_str"]}')
         print("\n", "=" * 50)
 
         strategy = SALES_STRATEGIES.get("pitch_initial")
-
+        rag_query = self.llm.query_small_rag_llm(
+            user_data["data"]["produits_recommandes"][0]["nom"]
+        )
+        rag_context = query_rag(rag_query)
         # Run LLM
         response = self.llm.query_llm(
-            strategy, user_data, "", "il n'y a pas de message utilisateur", "no history"
+            strategy["system_prompt"],
+            user_data,
+            rag_context,
+            "il n'y a pas de message utilisateur",
+            "no history",
         )
-
-        return response
+        explanation = generate_explanation(
+            "initial pitch",
+            user_data["data"]["produits_recommandes"][0]["nom"],
+            strategy["system_prompt"],
+            confidence_score=user_data["data"]["produits_recommandes"][0]["score"],
+        )
+        return response, explanation
 
     def respond(self, user_message: str, user_data, conversation_history: str) -> str:
         """Répondre au client avec logique intent + infos manquantes"""
@@ -46,9 +61,17 @@ class SalesAgent:
             rag_context = ""
 
         print(f"RAG Context: {rag_context}")
-        response = self.llm.query_llm(strategy, user_data, rag_context, user_message)
-
-        return response
+        response = self.llm.query_llm(
+            strategy["system_prompt"], user_data, rag_context, user_message
+        )
+        explanation = generate_explanation(
+            "initial pitch",
+            user_data["data"]["produits_recommandes"],
+            strategy["system_prompt"],
+            intent,
+            confidence_score=intent,
+        )
+        return response, explanation
 
 
 def generate_initial_message(agent: "SalesAgent", user_data) -> str:
@@ -56,15 +79,15 @@ def generate_initial_message(agent: "SalesAgent", user_data) -> str:
     Generate the first message from the sales agent and log it to the DB.
     """
 
-    response = agent.agent_initiate(user_data["user_data"])
+    response, explanation = agent.agent_initiate(user_data)
     append_message_to_conversation(
-        client_id=user_data["client_id"],
+        client_id=user_data["data"]["client_id"],
         corps=response,
         expediteur="agent",
         statut="non validé",
         msg_type="email",
     )
-    return response
+    return response, explanation
 
 
 def generate_response(agent: "SalesAgent") -> str:
@@ -73,7 +96,7 @@ def generate_response(agent: "SalesAgent") -> str:
     """
     conversation = get_first_open_conversation()
     user_data = fetch_existing_user_data(conversation["client"]["id"])
-    response = agent.respond(
+    response, explanation = agent.respond(
         user_data=user_data,
         user_message=conversation["latest_user_message"],
         conversation_history=conversation["conversation_history"],
@@ -87,7 +110,7 @@ def generate_response(agent: "SalesAgent") -> str:
         msg_type="email",
         conversation_id=conversation["conversationId"],
     )
-    return response
+    return response, explanation
 
 
 from datetime import datetime

@@ -2,7 +2,7 @@
 # LLM Configuration Constants
 # -----------------------------
 LLM_MODEL = "gemma3n:e4b"
-
+LLM_SMALL_MODEL = "google/flan-t5-small"
 # -----------------------------
 # Prompt Template Config
 # -----------------------------
@@ -11,12 +11,12 @@ SALES_PROMPT_INPUT_VARS = [
     "rag_context",
     "conversation_history",
     "latest_user_message",
-    "system_prompt",   # <-- NEW
+    "system_prompt",
 ]
 
 
 SALES_PROMPT_TEMPLATE = """
-Vous êtes un chargé de compte chez {company_name}. Votre objectif est de maximiser les ventes et la fidélisation client grâce à des messages d'email personnalisés, persuasifs et professionnels.
+Vous êtes un chargé de compte chez BH Assurance. Votre objectif est de maximiser les ventes et la fidélisation client grâce à des messages d'email personnalisés, persuasifs et professionnels.
 
 TÂCHE :
 {system_prompt}
@@ -45,15 +45,14 @@ FORMAT DE SORTIE (JSON) :
 
 SALES_STRATEGIES = {
     "pitch_initial": {
-    "system_prompt": (
-        "Vous préparez un premier argumentaire de vente pour un produit donné. "
-        "Présentez brièvement l’entreprise et le produit, en mettant en avant les bénéfices clés pour le client. "
-        "Soyez clair, engageant et professionnel, sans entrer dans des détails trop techniques. "
-        "Adaptez le ton pour éveiller l’intérêt du client et terminez en ouvrant la porte à une discussion ou à des questions."
-    ),
-        "use_rag": False,
-},
-
+        "system_prompt": (
+            "Vous préparez un premier argumentaire de vente pour un produit donné. "
+            "Présentez brièvement l’entreprise et le produit, en mettant en avant les bénéfices clés pour le client. "
+            "Soyez clair, engageant et professionnel, sans entrer dans des détails trop techniques. "
+            "Adaptez le ton pour éveiller l’intérêt du client et terminez en ouvrant la porte à une discussion ou à des questions."
+        ),
+        "use_rag": True,
+    },
     "pas d'intérêt": {
         "system_prompt": (
             "Le client décline l'offre ou indique n'avoir aucun intérêt. "
@@ -126,7 +125,7 @@ SALES_STRATEGIES = {
             "questions de clarification et proposez d'envoyer des ressources complémentaires."
         ),
         "use_rag": True,
-    }
+    },
 }
 
 
@@ -143,7 +142,9 @@ Message du client : {latest_user_message}
 Requête de recherche :
 """
 
-
+SMALL_RAG_QUERY_PROMPT = """
+Génère une requête de recherche pour ce produit d'assurance :{product_name}
+"""
 
 # -----------------------------
 # Domain-Specific Constants
