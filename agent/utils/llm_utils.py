@@ -35,6 +35,22 @@ class LLM:
             input_variables=["conversation_history", "latest_user_message"],
             template=RAG_QUERY_PROMPT,
         )
+        
+        # -----------------------------
+        # Scenario-Specific Prompts
+        # -----------------------------
+        self.product_recommendation_prompt = PromptTemplate(
+            input_variables=["user_data", "rag_context", "product_name"],
+            template=PRODUCT_RECOMMENDATION_PROMPT,
+        )
+        self.payment_reminder_prompt = PromptTemplate(
+            input_variables=["user_data", "rag_context", "product_name"],
+            template=PAYMENT_REMINDER_PROMPT,
+        )
+        self.contract_renewal_prompt = PromptTemplate(
+            input_variables=["user_data", "rag_context", "product_name"],
+            template=CONTRACT_RENEWAL_PROMPT,
+        )
         self.model = AutoModelForCausalLM.from_pretrained(
             LLM_SMALL_MODEL, torch_dtype="auto", device_map="auto"
         )
@@ -45,6 +61,11 @@ class LLM:
         self.sales_chain = self.sales_prompt | self.llm
         self.rag_chain = self.rag_prompt | self.llm
         self.initial_sales_chain = self.intitial_sales_prompt | self.llm
+        
+        # Scenario-specific chains
+        self.product_recommendation_chain = self.product_recommendation_prompt | self.llm
+        self.payment_reminder_chain = self.payment_reminder_prompt | self.llm
+        self.contract_renewal_chain = self.contract_renewal_prompt | self.llm
 
     def generate_mail_object(self, mail_body):
         messages = [
@@ -67,7 +88,7 @@ class LLM:
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=16,  # court, suffisant pour un objet
+            max_new_tokens=216,  # court, suffisant pour un objet
             do_sample=False,  # génération déterministe
             temperature=0.3,
         )
@@ -155,6 +176,42 @@ class LLM:
                 "latest_user_message": latest_user_message,
             }
         )
+        return response
+    
+    def query_scenario_llm(self, scenario_type: str, user_data, rag_context, product_name):
+        """
+        Query the LLM using scenario-specific prompts.
+        
+        Args:
+            scenario_type: One of 'product_recommendation', 'payment_reminder', 'contract_renewal'
+            user_data: Formatted user data string
+            rag_context: RAG context information
+            product_name: Product name for the scenario
+            
+        Returns:
+            LLM response using the appropriate scenario-specific prompt
+        """
+        scenario_chains = {
+            "product_recommendation": self.product_recommendation_chain,
+            "payment_reminder": self.payment_reminder_chain,
+            "contract_renewal": self.contract_renewal_chain
+        }
+        
+        if scenario_type not in scenario_chains:
+            print(f"[LLM Warning] Unknown scenario type: {scenario_type}, falling back to default")
+            return self.initial_sales_chain.invoke({
+                "user_data": user_data,
+                "rag_context": rag_context,
+                "product_name": product_name,
+            })
+        
+        chain = scenario_chains[scenario_type]
+        response = chain.invoke({
+            "user_data": user_data,
+            "rag_context": rag_context,
+            "product_name": product_name,
+        })
+        
         return response
 
     def destroy(self):

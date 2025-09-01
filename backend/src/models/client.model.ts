@@ -16,25 +16,30 @@ const ContractSchema = new Schema({
 
 // Schéma principal Client
 const ClientSchema = new Schema({
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    index: true 
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
   },
   phone: String,
   first_name: String,
   last_name: String,
   age: Number,
   job: String,
+  bd_id: {
+    type: Number,
+    required: true,
+    unique: true
+  },
   contracts: [ContractSchema],
   opportunity_score: {
     type: Number,
     default: 0
   },
   last_contact_at: Date
-}, { 
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+}, {
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 export default model('Client', ClientSchema);
