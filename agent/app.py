@@ -12,9 +12,12 @@ if __name__ == "__main__":
             #     reply = generate_response(agent)
             # else:
             user_data = fetch_new_user_data()
-            reply, explanation = generate_initial_message(agent, user_data)
+            reply, explanation, subject = generate_initial_message(agent, user_data)
             print(
-                "=" * 50, f"\nAgent: {reply}\n", f"explanation: {explanation}", "=" * 50
+                "=" * 50,
+                f"\nAgent: \nobjet mail:{subject}\nCorps mail:\n{reply}\n",
+                f"explanation: {explanation}",
+                "=" * 50,
             )
 
     except KeyboardInterrupt:

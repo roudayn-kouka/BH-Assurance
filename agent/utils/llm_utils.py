@@ -2,7 +2,7 @@ from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import gc
 from config import *
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # -----------------------------
 # LLM Setup
@@ -23,52 +23,127 @@ class LLM:
             .replace("{language}", LANGUAGE)
             .replace("{max_sentences}", str(MAX_SENTENCES)),
         )
+        self.intitial_sales_prompt = PromptTemplate(
+            input_variables=INITIAL_SALES_PROMPT_INPUT_VARS,
+            template=INITIAL_SALES_PROMPT_TEMPLATE.replace(
+                "{company_name}", COMPANY_NAME
+            )
+            .replace("{language}", LANGUAGE)
+            .replace("{max_sentences}", str(MAX_SENTENCES)),
+        )
         self.rag_prompt = PromptTemplate(
             input_variables=["conversation_history", "latest_user_message"],
             template=RAG_QUERY_PROMPT,
         )
-        self.tokenizer = T5Tokenizer.from_pretrained(LLM_SMALL_MODEL)
-        self.model = T5ForConditionalGeneration.from_pretrained(LLM_SMALL_MODEL)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            LLM_SMALL_MODEL, torch_dtype="auto", device_map="auto"
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(LLM_SMALL_MODEL)
         # -----------------------------
         # Chains
         # -----------------------------
         self.sales_chain = self.sales_prompt | self.llm
         self.rag_chain = self.rag_prompt | self.llm
+        self.initial_sales_chain = self.intitial_sales_prompt | self.llm
 
-    def generate_summary(self, input_prompt):
+    def generate_mail_object(self, mail_body):
+        messages = [
+            {
+                "role": "system",
+                "content": "Tu es un assistant qui génère uniquement l'objet d'un mail en français. "
+                "Réponds par une seule ligne, maximum 8 mots. N'ajoute aucune explication.",
+            },
+            {
+                "role": "user",
+                "content": f"Contenu du mail :\n{mail_body}",
+            },
+        ]
+        input_prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        model_inputs = self.tokenizer([input_prompt], return_tensors="pt").to(
+            self.model.device
+        )
 
-        input_ids = self.tokenizer(input_prompt, return_tensors="pt").input_ids
+        generated_ids = self.model.generate(
+            **model_inputs,
+            max_new_tokens=16,  # court, suffisant pour un objet
+            do_sample=False,  # génération déterministe
+            temperature=0.3,
+        )
+        generated_ids = [
+            output_ids[len(input_ids) :]
+            for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
 
-        outputs = self.model.generate(input_ids)
-        return self.tokenizer.decode(outputs[0])
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ]
+        return response
 
     def query_llm(
-        self, system_prompt, user_data, rag_context, user_message, conversation_history
+        self,
+        is_initial: bool,
+        user_data,
+        rag_context,
+        product_name="",
+        system_prompt="",
+        user_message="",
+        conversation_history="",
     ):
         """
         Query the sales LLM with provided data and conversation history.
         """
-        response = self.sales_chain.invoke(
-            {
-                "system_prompt": system_prompt,
-                "user_data": user_data,
-                "rag_context": rag_context,
-                "conversation_history": "\n".join(conversation_history),
-                "latest_user_message": user_message,
-            }
-        )
+        if is_initial:
+            response = self.initial_sales_chain.invoke(
+                {
+                    "user_data": user_data,
+                    "rag_context": rag_context,
+                    "product_name": product_name,
+                }
+            )
+        else:
+            response = self.sales_chain.invoke(
+                {
+                    "system_prompt": system_prompt,
+                    "user_data": user_data,
+                    "rag_context": rag_context,
+                    "conversation_history": "\n".join(conversation_history),
+                    "latest_user_message": user_message,
+                }
+            )
         return response
 
     def query_small_rag_llm(self, product_name):
-        input_ids = self.tokenizer(
-            SMALL_RAG_QUERY_PROMPT.replace("{product_name}", product_name),
-            return_tensors="pt",
-        ).input_ids
-
-        outputs = self.model.generate(
-            input_ids, max_length=64, num_beams=4, early_stopping=True
+        messages = [
+            {
+                "role": "system",
+                "content": "Tu es un assistant qui produit uniquement des mots-clés/phrases pour une recherche vectorielle.",
+            },
+            {
+                "role": "user",
+                "content": SMALL_RAG_QUERY_PROMPT.replace(
+                    "{product_name}", product_name
+                ),
+            },
+        ]
+        input_prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
         )
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        model_inputs = self.tokenizer([input_prompt], return_tensors="pt").to(
+            self.model.device
+        )
+
+        generated_ids = self.model.generate(**model_inputs, max_new_tokens=512)
+        generated_ids = [
+            output_ids[len(input_ids) :]
+            for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ]
+        return response
 
     def query_rag_llm(self, conversation_history, latest_user_message):
         """

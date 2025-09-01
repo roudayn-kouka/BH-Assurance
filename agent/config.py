@@ -2,7 +2,7 @@
 # LLM Configuration Constants
 # -----------------------------
 LLM_MODEL = "gemma3n:e4b"
-LLM_SMALL_MODEL = "google/flan-t5-small"
+LLM_SMALL_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
 # -----------------------------
 # Prompt Template Config
 # -----------------------------
@@ -42,17 +42,45 @@ FORMAT DE SORTIE (JSON) :
 }}
 
 """
+INITIAL_SALES_PROMPT_INPUT_VARS = [
+    "user_data",
+    "rag_context",
+    "product_name",
+]
+
+INITIAL_SALES_PROMPT_TEMPLATE = """    Tu es un chargé de compte senior chez BH Assurance, spécialisé dans les premiers contacts 
+    commercials pour des produits d'assurance. Ton objectif est d'écrire un premier email 
+    professionnel, persuasif et personnalisé afin d'obtenir un rendez-vous ou un engagement clair. 
+    Respecte toujours l'éthique commerciale : honnêteté, transparence et respect du client.
+
+TÂCHE :
+Rédige un premier email commercial (initial sales pitch) ciblé et professionnel destiné à présenter
+rapidement une offre d'assurance et obtenir une action concrète (rendez-vous, appel, réponse).
+
+CONTEXTE :
+- Données client : {user_data}
+- Informations récupérées (RAG) : {rag_context}
+- Produit ciblé : {product_name}
+
+CONTRAINTES :
+- Première phrase : personnalisation immédiate en utilisant les données client si disponibles (nom, entreprise, secteur).
+- Inclure une proposition de valeur claire (qu'est-ce que le client gagne) dans la 2ème phrase.
+- Mentionner 1–2 bénéfices concrets et pertinents pour le client (ex : économies, conformité, rapidité, couverture spécifique).
+- Si le rag_context contient preuve (ex : étude, témoignage, chiffre), réutiliser une phrase courte de preuve sociale.
+- Toujours terminer par un appel à l'action explicite (prise de rendez-vous, essai gratuit, lien, réponse par retour).
+- Ne jamais inventer de produits, données client ou chiffres.
+- Ton : amical, professionnel, convaincant, non agressif.
+- Longueur : maximum {max_sentences} phrases.
+- Générer uniquement le corps du mail en français, sans titres, labels ni explications supplémentaires.
+
+FORMAT DE SORTIE (JSON) :
+{{ 
+    "corps_du_mail_en_français": "<texte_du_mail_en_francais>" 
+}}
+"""
+
 
 SALES_STRATEGIES = {
-    "pitch_initial": {
-        "system_prompt": (
-            "Vous préparez un premier argumentaire de vente pour un produit donné. "
-            "Présentez brièvement l’entreprise et le produit, en mettant en avant les bénéfices clés pour le client. "
-            "Soyez clair, engageant et professionnel, sans entrer dans des détails trop techniques. "
-            "Adaptez le ton pour éveiller l’intérêt du client et terminez en ouvrant la porte à une discussion ou à des questions."
-        ),
-        "use_rag": True,
-    },
     "pas d'intérêt": {
         "system_prompt": (
             "Le client décline l'offre ou indique n'avoir aucun intérêt. "
@@ -142,8 +170,28 @@ Message du client : {latest_user_message}
 Requête de recherche :
 """
 
-SMALL_RAG_QUERY_PROMPT = """
-Génère une requête de recherche pour ce produit d'assurance :{product_name}
+SMALL_RAG_QUERY_PROMPT = """Tu es un assistant dédié aux recherches RAG pour des produits d'assurance.
+À partir du nom exact du produit fourni, génère uniquement des PHRASES courtes qui sont susceptibles d'amener des documents ou des extraits INFORMATIONS directement pertinents pour CE produit d'assurance.
+Ne fournis aucune explication ni aucun label — seulement la liste.
+
+CONTRAINTES :
+- 3 phrases seulement
+- Les phrases doivent cibler des aspects concrets et recherchables du produit : couverte(s), garanties, exclusions, conditions d'éligibilité, modalités de souscription, tarifs, durée, franchises, documents requis, procédures de sinistre, révocations/avenants, publics cibles, références réglementaires ou codes produits internes.
+- Langue : français.
+- N'invente aucune information sur le produit (ne suppose rien qui n'est pas déduit du nom).
+- Ne pas inclure de labels, titres ou numéros.
+- Ne pas ajouter de ponctuation finale inutile (éviter le point).
+
+Nom du produit recommandé : {product_name}
+
+"""
+
+MAIL_SUBJECT_PROMPT = """Tu es un assistant spécialisé dans la rédaction d'e-mails.  
+Ta tâche est de lire le contenu suivant et de proposer uniquement un objet de mail clair, court (maximum 12 mots) et représentatif.  
+N’ajoute pas d’explication, donne uniquement l’objet.  
+
+Contenu du mail :  
+{mail_body}
 """
 
 # -----------------------------
