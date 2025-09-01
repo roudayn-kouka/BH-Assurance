@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Historique from "./pages/Historique";
 import Validation from "./pages/Validation";
+import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import { DashboardLayout } from "./components/DashboardLayout";
+import Login from "./components/Login"
 
 const queryClient = new QueryClient();
 
@@ -18,6 +20,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Index />} />
           <Route path="/historique" element={
             <DashboardLayout>
@@ -27,6 +30,11 @@ const App = () => (
           <Route path="/validation" element={
             <DashboardLayout>
               <Validation />
+            </DashboardLayout>
+          } />
+          <Route path="/analytics" element={
+            <DashboardLayout>
+              <Analytics />
             </DashboardLayout>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

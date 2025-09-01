@@ -1,4 +1,4 @@
-import { Mail, Calendar, User, Clock, CheckCircle } from "lucide-react"
+import { Mail, Calendar, User } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -12,7 +12,6 @@ interface EmailMessageProps {
   body: string
   direction: "inbox" | "sent"
   tag?: string
-  status?: "en_attente" | "valide" | "rejete" | "envoye"
 }
 
 const generateSubject = (type: "question" | "reponse" | undefined, content: string): string => {
@@ -35,92 +34,54 @@ export function EmailMessage({
   date, 
   body, 
   direction,
-  tag,
-  status 
+  tag 
 }: EmailMessageProps) {
-  const getStatusBadge = () => {
-    switch (status) {
-      case 'en_attente':
-        return (
-          <Badge variant="outline" className="absolute -top-2 -right-2 bg-yellow-100 text-yellow-800 border-yellow-300">
-            <Clock className="h-3 w-3 mr-1" />
-            En attente
-          </Badge>
-        )
-      case 'valide':
-        return (
-          <Badge variant="outline" className="absolute -top-2 -right-2 bg-green-100 text-green-800 border-green-300">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Validé
-          </Badge>
-        )
-      case 'rejete':
-        return (
-          <Badge variant="outline" className="absolute -top-2 -right-2 bg-red-100 text-red-800 border-red-300">
-            ✗ Rejeté
-          </Badge>
-        )
-      case 'envoye':
-        return (
-          <Badge variant="outline" className="absolute -top-2 -right-2 bg-blue-100 text-blue-800 border-blue-300">
-            ✓ Envoyé
-          </Badge>
-        )
-      default:
-        return null
-    }
-  }
-
   return (
-    <div className="relative">
-      {getStatusBadge()}
-      
-      <Card className={`transition-all hover:shadow-md ${
-        direction === "inbox" 
-          ? "border-l-4 border-l-bh-navy bg-card" 
-          : "border-l-4 border-l-bh-red bg-primary/5"
-      }`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <Mail className={`h-4 w-4 ${direction === "inbox" ? "text-bh-navy" : "text-bh-red"}`} />
-              <span className="font-semibold text-sm">{subject}</span>
-            </div>
-            {tag && (
-              <Badge 
-                variant={direction === "inbox" ? "secondary" : "default"}
-                className={direction === "inbox" ? "bg-bh-navy/10 text-bh-navy border-bh-navy/20" : "bg-bh-red/10 text-bh-red border-bh-red/20"}
-              >
-                {tag}
-              </Badge>
-            )}
+    <Card className={`transition-all hover:shadow-md ${
+      direction === "inbox" 
+        ? "border-l-4 border-l-bh-navy bg-card" 
+        : "border-l-4 border-l-bh-red bg-primary/5"
+    }`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className={`h-4 w-4 ${direction === "inbox" ? "text-bh-navy" : "text-bh-red"}`} />
+            <span className="font-semibold text-sm">{subject}</span>
           </div>
-          
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <User className="h-3 w-3" />
-              <span><strong>De:</strong> {from} &lt;{fromEmail}&gt;</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="h-3 w-3" />
-              <span><strong>À:</strong> {to} &lt;{toEmail}&gt;</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-3 w-3" />
-              <span><strong>Date:</strong> {new Date(date).toLocaleString('fr-FR')}</span>
-            </div>
-          </div>
-        </CardHeader>
+          {tag && (
+            <Badge 
+              variant={direction === "inbox" ? "secondary" : "default"}
+              className={direction === "inbox" ? "bg-bh-navy/10 text-bh-navy border-bh-navy/20" : "bg-bh-red/10 text-bh-red border-bh-red/20"}
+            >
+              {tag}
+            </Badge>
+          )}
+        </div>
         
-        <CardContent className="pt-0">
-          <div className="bg-background/50 p-4 rounded-md border border-border/50">
-            <p className="text-sm leading-relaxed whitespace-pre-line">
-              {body}
-            </p>
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <User className="h-3 w-3" />
+            <span><strong>De:</strong> {from} &lt;{fromEmail}&gt;</span>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="flex items-center gap-2">
+            <User className="h-3 w-3" />
+            <span><strong>À:</strong> {to} &lt;{toEmail}&gt;</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3" />
+            <span><strong>Date:</strong> {new Date(date).toLocaleString('fr-FR')}</span>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="pt-0">
+        <div className="bg-background/50 p-4 rounded-md border border-border/50">
+          <p className="text-sm leading-relaxed whitespace-pre-line">
+            {body}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

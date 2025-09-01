@@ -1,48 +1,49 @@
+// src/app/page.tsx (ou src/components/Index.tsx)
+
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { HistoryIcon, CheckCircle2, Shield, Users, Loader2 } from "lucide-react"
+import { HistoryIcon, CheckCircle2, Shield, Users } from "lucide-react"
 import bhLogo from "@/assets/bh-logo.png"
-import { useState, useEffect } from "react"
 
-interface Stats {
+interface AnalyticsSummary {
   totalConversations: number
-  pendingValidation: number
+  pendingValidations: number
   satisfactionRate: number
-  activeClients: number
-  recentActivity?: string
 }
 
 const Index = () => {
-  const [stats, setStats] = useState<Stats | null>(null)
+  const [stats, setStats] = useState<AnalyticsSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Charger les statistiques depuis l'API
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        setLoading(true)
-        const response = await fetch('http://localhost:5000/api/stats')
-        
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`)
-        }
-        
-        const data: Stats = await response.json()
-        setStats(data)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur de chargement des statistiques')
-        console.error('Erreur fetch stats:', err)
-        
-        // Fallback vers les données statiques en cas d'erreur
-        setStats({
-          totalConversations: 156,
-          pendingValidation: 23,
-          satisfactionRate: 98,
-          activeClients: 45
+        const token = localStorage.getItem('token')
+        if (!token) throw new Error('Non authentifié')
+
+        const res = await fetch('http://localhost:3001/api/analytics/summary', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         })
+
+        if (!res.ok) {
+          throw new Error('Échec du chargement des statistiques')
+        }
+
+        const data = await res.json()
+
+        // Adapter les données API → frontend
+        setStats({
+          totalConversations: data.total_conversations || 0,
+          pendingValidations: data.pending_validations || 0,
+          satisfactionRate: data.satisfaction_rate ? Math.round(data.satisfaction_rate * 100) : 98 // Valeur par défaut
+        })
+      } catch (err: any) {
+        setError(err.message)
       } finally {
         setLoading(false)
       }
@@ -154,81 +155,54 @@ const Index = () => {
 
         {/* Stats Section */}
         <div className="mt-16 text-center">
-          {error && (
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-md mb-6 max-w-2xl mx-auto">
-              <p className="text-sm">⚠️ {error}</p>
-              <p className="text-xs mt-1">Affichage des données de démonstration</p>
-            </div>
-          )}
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
             <Card>
               <CardContent className="pt-6">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-bh-navy mb-2" />
-                    <p className="text-xs text-muted-foreground">Chargement...</p>
-                  </div>
+                  <div className="text-3xl font-bold text-muted-foreground">...</div>
+                ) : error ? (
+                  <div className="text-sm text-destructive">Erreur</div>
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-bh-navy mb-2">
-                      {stats?.totalConversations || 0}
-                    </div>
+                    <div className="text-3xl font-bold text-bh-navy mb-2">{stats?.totalConversations}</div>
                     <p className="text-sm text-muted-foreground">Conversations totales</p>
                   </>
                 )}
               </CardContent>
             </Card>
-            
             <Card>
               <CardContent className="pt-6">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-bh-red mb-2" />
-                    <p className="text-xs text-muted-foreground">Chargement...</p>
-                  </div>
+                  <div className="text-3xl font-bold text-muted-foreground">...</div>
+                ) : error ? (
+                  <div className="text-sm text-destructive">Erreur</div>
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-bh-red mb-2">
-                      {stats?.pendingValidation || 0}
-                    </div>
+                    <div className="text-3xl font-bold text-bh-red mb-2">{stats?.pendingValidations}</div>
                     <p className="text-sm text-muted-foreground">En attente de validation</p>
                   </>
                 )}
               </CardContent>
             </Card>
-            
             <Card>
               <CardContent className="pt-6">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-20">
-                    <Loader2 className="h-6 w-6 animate-spin text-green-600 mb-2" />
-                    <p className="text-xs text-muted-foreground">Chargement...</p>
-                  </div>
+                  <div className="text-3xl font-bold text-muted-foreground">...</div>
+                ) : error ? (
+                  <div className="text-sm text-destructive">Erreur</div>
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-green-600 mb-2">
-                      {stats?.satisfactionRate || 0}%
-                    </div>
+                    <div className="text-3xl font-bold text-success mb-2">{stats?.satisfactionRate}%</div>
                     <p className="text-sm text-muted-foreground">Taux de satisfaction</p>
                   </>
                 )}
               </CardContent>
             </Card>
           </div>
-          
-          {/* Dernière activité */}
-          {stats?.recentActivity && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Dernière activité: {new Date(stats.recentActivity).toLocaleString('fr-FR')}
-              </p>
-            </div>
-          )}
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index
