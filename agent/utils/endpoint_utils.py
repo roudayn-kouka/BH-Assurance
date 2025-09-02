@@ -6,6 +6,7 @@ different business strategies (product recommendation, payment reminder, contrac
 
 from typing import Dict, Any, Optional
 import json
+# User type classification now handled by API directly
 
 
 def normalize_score_raw(score_raw: Any) -> Optional[float]:
@@ -58,6 +59,29 @@ def _convert_product_recommendation_data(data: Dict[str, Any]) -> str:
     profile = data.get("profile", {})
     user_id = data.get("user_id", "Unknown")
     endpoint_key = data.get("endpoint_key", "unknown")
+    user_type = data.get("user_type", "unknown")
+    
+    # Get user type from API response directly
+    type_display = user_type.upper() if user_type != "unknown" else "INDÉTERMINÉ"
+    
+    # Get display name from profile
+    if user_type == "personne_physique":
+        display_name = (
+            profile.get("full_name") or 
+            f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip() or
+            f"{profile.get('prenom', '')} {profile.get('nom', '')}".strip() or
+            "Client particulier"
+        )
+        type_specific_info = f"Particulier: {display_name}"
+    elif user_type == "personne_morale":
+        display_name = (
+            profile.get("company_name") or
+            profile.get("raison_sociale") or
+            "Entreprise"
+        )
+        type_specific_info = f"Entreprise: {display_name}"
+    else:
+        type_specific_info = "Type: Non déterminé"
     
     # Extract key information for product recommendation
     candidate_product = profile.get("candidate_produit", "Non spécifié")
@@ -68,10 +92,13 @@ def _convert_product_recommendation_data(data: Dict[str, Any]) -> str:
     score = normalize_score_raw(profile.get("score", profile.get("good_buyer_score_pct")))
     nb_products = profile.get("nb_products", 0)
     
-    # Build formatted string
+    # Build formatted string with user type information
     lines = [
         f"=== RECOMMANDATION PRODUIT ({endpoint_key.upper()}) ===",
+        f"TYPE CLIENT: {type_display}",
+        f"{type_specific_info}",
         f"ID Client: {user_id}",
+        "",
         f"Secteur d'activité: {sector}",
         f"Activité: {activity}",
         f"Catégorie: {category}",
@@ -106,6 +133,29 @@ def _convert_payment_reminder_data(data: Dict[str, Any]) -> str:
     profile = data.get("profile", {})
     user_id = data.get("user_id", "Unknown")
     endpoint_key = data.get("endpoint_key", "unknown")
+    user_type = data.get("user_type", "unknown")
+    
+    # Get user type from API response directly
+    type_display = user_type.upper() if user_type != "unknown" else "INDÉTERMINÉ"
+    
+    # Get display name from profile
+    if user_type == "personne_physique":
+        display_name = (
+            profile.get("full_name") or 
+            f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip() or
+            f"{profile.get('prenom', '')} {profile.get('nom', '')}".strip() or
+            "Client particulier"
+        )
+        type_specific_info = f"Particulier: {display_name}"
+    elif user_type == "personne_morale":
+        display_name = (
+            profile.get("company_name") or
+            profile.get("raison_sociale") or
+            "Entreprise"
+        )
+        type_specific_info = f"Entreprise: {display_name}"
+    else:
+        type_specific_info = "Type: Non déterminé"
     
     # Extract key information for payment reminder
     statut_paiement = profile.get("statut_paiement", "Non spécifié")
@@ -116,10 +166,13 @@ def _convert_payment_reminder_data(data: Dict[str, Any]) -> str:
     nb_sinistre = profile.get("nb_sinistre", 0)
     effet_contrat_date = profile.get("effet_contrat_date", "Non spécifié")
     
-    # Build formatted string
+    # Build formatted string with user type information
     lines = [
         f"=== RAPPEL DE PAIEMENT ({endpoint_key.upper()}) ===",
+        f"TYPE CLIENT: {type_display}",
+        f"{type_specific_info}",
         f"ID Client: {user_id}",
+        "",
         f"Numéro de contrat: {num_contrat}",
         f"Produit: {lib_produit}",
         f"Statut de paiement: {statut_paiement}",
@@ -154,6 +207,29 @@ def _convert_contract_renewal_data(data: Dict[str, Any]) -> str:
     profile = data.get("profile", {})
     user_id = data.get("user_id", "Unknown")
     endpoint_key = data.get("endpoint_key", "unknown")
+    user_type = data.get("user_type", "unknown")
+    
+    # Get user type from API response directly
+    type_display = user_type.upper() if user_type != "unknown" else "INDÉTERMINÉ"
+    
+    # Get display name from profile
+    if user_type == "personne_physique":
+        display_name = (
+            profile.get("full_name") or 
+            f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip() or
+            f"{profile.get('prenom', '')} {profile.get('nom', '')}".strip() or
+            "Client particulier"
+        )
+        type_specific_info = f"Particulier: {display_name}"
+    elif user_type == "personne_morale":
+        display_name = (
+            profile.get("company_name") or
+            profile.get("raison_sociale") or
+            "Entreprise"
+        )
+        type_specific_info = f"Entreprise: {display_name}"
+    else:
+        type_specific_info = "Type: Non déterminé"
     
     # Extract key information for contract renewal
     date_expiration_contract = profile.get("date_expiration_contract", "Non spécifié")
@@ -165,10 +241,13 @@ def _convert_contract_renewal_data(data: Dict[str, Any]) -> str:
     candidate_garanties = profile.get("candidate_garanties", "Aucune")
     candidate_product = profile.get("candidate_product", "Non spécifié")
     
-    # Build formatted string
+    # Build formatted string with user type information
     lines = [
         f"=== RENOUVELLEMENT DE CONTRAT ({endpoint_key.upper()}) ===",
+        f"TYPE CLIENT: {type_display}",
+        f"{type_specific_info}",
         f"ID Client: {user_id}",
+        "",
         f"Numéro de contrat: {num_contrat}",
         f"Produit: {lib_produit}",
         f"Date d'expiration: {date_expiration_contract}",
@@ -264,7 +343,7 @@ def get_strategy_specific_prompts(endpoint_strategy: str) -> Dict[str, str]:
 
 def get_product_name_from_endpoint_data(data: Dict[str, Any]) -> str:
     """
-    Extract the most relevant product name from endpoint data for RAG queries.
+    Extract the most relevant product name from endpoint data for RAG queries based on business scenario.
     
     Args:
         data: API endpoint response data
@@ -277,23 +356,60 @@ def get_product_name_from_endpoint_data(data: Dict[str, Any]) -> str:
     
     profile = data.get("profile", {})
     endpoint_strategy = data.get("endpoint_strategy", "")
+    recommended_action = data.get("recommended_action", "")
     
-    # Priority order for product name extraction
-    product_candidates = [
+    # Scenario-specific product extraction
+    if endpoint_strategy == "product_recommendation":
+        # For product recommendations: extract from recommended product field
+        recommended_product = profile.get("recommended_product")
+        if recommended_product and str(recommended_product).strip():
+            return str(recommended_product).strip()
+        
+        # Fallback to candidate product fields
+        candidate_product = profile.get("candidate_produit") or profile.get("candidate_product")
+        if candidate_product and str(candidate_product).strip():
+            return str(candidate_product).strip()
+    
+    elif recommended_action == "recommend_garantie" or "garantie" in recommended_action.lower():
+        # For guarantee recommendations: take the first guarantee only
+        candidate_garanties = profile.get("candidate_garanties")
+        if candidate_garanties and str(candidate_garanties).strip():
+            # Split by semicolon and take the first guarantee
+            guarantees = str(candidate_garanties).split(';')
+            first_guarantee = guarantees[0].strip()
+            if first_guarantee:
+                return first_guarantee
+    
+    elif endpoint_strategy in ["contract_renewal", "payment_reminder"]:
+        # For contract renewal or bill reminders: use the product in the contract/bill
+        lib_produit = profile.get("lib_produit")
+        if lib_produit and str(lib_produit).strip():
+            return str(lib_produit).strip()
+        
+        # Fallback to branch/sub-branch if lib_produit is not available
+        lib_sous_branche = profile.get("lib_sous_branche")
+        if lib_sous_branche and str(lib_sous_branche).strip():
+            return str(lib_sous_branche).strip()
+            
+        branche = profile.get("branche")
+        if branche and str(branche).strip():
+            return str(branche).strip()
+    
+    # Generic fallback: try the most common product fields
+    generic_candidates = [
+        profile.get("lib_produit"),
+        profile.get("recommended_product"),
         profile.get("candidate_produit"),
         profile.get("candidate_product"),
-        profile.get("recommended_product"),
-        profile.get("lib_produit"),
         profile.get("lib_sous_branche"),
         profile.get("branche")
     ]
     
-    # Find first non-empty product name
-    for candidate in product_candidates:
+    for candidate in generic_candidates:
         if candidate and str(candidate).strip():
             return str(candidate).strip()
     
-    # Fallback based on strategy
+    # Final fallback based on strategy
     strategy_fallbacks = {
         "product_recommendation": "assurance professionnelle",
         "payment_reminder": "assurance automobile", 

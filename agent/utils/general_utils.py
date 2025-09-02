@@ -1,7 +1,11 @@
 from rag_model import rag
 from intent_analysis import analyse_message
 from utils.user_profile_conn import *
-from utils.endpoint_utils import convert_endpoint_data_to_string, get_product_name_from_endpoint_data
+from utils.endpoint_utils import (
+    convert_endpoint_data_to_string,
+    get_product_name_from_endpoint_data,
+)
+# User type classification now handled by API directly
 import random
 
 import re
@@ -419,17 +423,77 @@ def format_user_for_llm(user_data: Dict[str, Any]) -> str:
 
 
 def fetch_new_user_data() -> Dict[str, Any]:
+    """Fetch new user data using API provided user_type directly."""
     raw_user_data = fetch_new_user()
     if not raw_user_data:
-        return {"data": None, "user_data_str": "Aucune donnée utilisateur disponible"}
+        return {
+            "data": None,
+            "user_data_str": "Aucune donnée utilisateur disponible",
+            "user_type": "unknown",
+            "endpoint_strategy": None,
+        }
+
+    # Get user type directly from API response
+    user_type = raw_user_data.get("user_type", "unknown")
+    endpoint_strategy = raw_user_data.get("endpoint_strategy")
+    endpoint_key = raw_user_data.get("endpoint_key")
     
-    # Use endpoint-specific conversion if available, otherwise fallback to general format
+    print(f"[API_DATA] User type: {user_type}, Strategy: {endpoint_strategy}, Key: {endpoint_key}")
+
+    # Generate appropriate string representation for LLM
     if "endpoint_strategy" in raw_user_data:
+        # Use endpoint-specific conversion
         clean_user_data = convert_endpoint_data_to_string(raw_user_data)
     else:
+        # Use general format
         clean_user_data = format_user_for_llm(raw_user_data)
-    
-    return {"data": raw_user_data, "user_data_str": clean_user_data}
+
+    # Extract profile for display name
+    profile = raw_user_data.get("profile", {})
+    if user_type == "personne_physique":
+        # Get individual display name
+        display_name = (
+            profile.get("full_name") or 
+            f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip() or
+            f"{profile.get('prenom', '')} {profile.get('nom', '')}".strip() or
+            "Client particulier"
+        )
+        type_specific_info = f"""
+=== INFORMATIONS PARTICULIER ===
+Nom: {display_name}
+Âge: {profile.get('age', 'N/A')}
+Profession: {profile.get('profession', 'N/A')}
+Téléphone: {profile.get('telephone', profile.get('phone', 'N/A'))}
+Email: {profile.get('email', 'N/A')}
+"""
+    elif user_type == "personne_morale":
+        # Get company display name
+        display_name = (
+            profile.get("company_name") or
+            profile.get("raison_sociale") or
+            "Entreprise"
+        )
+        type_specific_info = f"""
+=== INFORMATIONS ENTREPRISE ===
+Raison sociale: {display_name}
+Personne de contact: {profile.get('contact_person', profile.get('first_name', 'N/A'))}
+Téléphone: {profile.get('telephone', profile.get('phone', 'N/A'))}
+Email: {profile.get('email', 'N/A')}
+Matricule fiscal: {profile.get('matricule_fiscale', 'N/A')}
+"""
+    else:
+        display_name = "Client"
+        type_specific_info = "\n=== TYPE INCONNU - DONNÉES GÉNÉRIQUES ===\n"
+
+    enhanced_user_data = type_specific_info + "\n" + clean_user_data
+
+    return {
+        "data": raw_user_data,
+        "user_data_str": enhanced_user_data,
+        "user_type": user_type,
+        "endpoint_strategy": endpoint_strategy,
+        "display_name": display_name,
+    }
 
 
 def fetch_existing_user_data(user_id: int) -> Dict[str, Any]:
@@ -486,8 +550,8 @@ def generate_explanation(
         )
     elif msg_type == "respond":
         return (
-            TEMPLATE_RESPONDING.replace("{intention}", intention)
+            TEMPLATE_RESPONDING.replace("{intention}", str(intention))
             .replace("{products}", str(products))
             .replace("{system_prompt}", system_prompt)
-            .replace("{intention_score}", confidence_score)
+            .replace("{intention_score}", str(confidence_score))
         )
