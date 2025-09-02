@@ -51,7 +51,7 @@ export default function Historique() {
 
         const clientsData = await clientsRes.json()
 
-        // ✅ Gestion de la réponse paginée : on extrait `clients` si présent
+        // ✅ Gestion de la réponse paginée : extraire `clients` si présent
         const clientsArray = Array.isArray(clientsData)
           ? clientsData
           : Array.isArray(clientsData.clients)
@@ -73,12 +73,26 @@ export default function Historique() {
         const conversationsData: Record<string, Message[]> = {}
         for (const client of formattedClients) {
           const convRes = await fetch(`http://localhost:3001/api/conversations?client_id=${client.id}`, { headers })
-          const convs = await convRes.json()
+          const convsData = await convRes.json()
+
+          // ✅ Extraire le tableau de conversations
+          const convs = Array.isArray(convsData)
+            ? convsData
+            : Array.isArray(convsData.conversations)
+              ? convsData.conversations
+              : []
 
           let messages: Message[] = []
           for (const conv of convs) {
             const msgRes = await fetch(`http://localhost:3001/api/conversations/${conv._id}/messages`, { headers })
-            const msgs = await msgRes.json()
+            const msgsData = await msgRes.json()
+
+            // ✅ Extraire les messages
+            const msgs = Array.isArray(msgsData)
+              ? msgsData
+              : Array.isArray(msgsData.messages)
+                ? msgsData.messages
+                : []
 
             messages = messages.concat(
               msgs.map((m: any) => ({
@@ -106,7 +120,8 @@ export default function Historique() {
 
         setConversations(conversationsData)
       } catch (err: any) {
-        setError(err.message)
+        console.error('Erreur dans Historique:', err)
+        setError(err.message || 'Une erreur inattendue est survenue')
       } finally {
         setLoading(false)
       }

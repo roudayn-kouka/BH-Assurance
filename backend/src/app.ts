@@ -8,6 +8,8 @@ import cors from 'cors';
 import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
+import emailRoute from './routes/email.route';
+
 
 // ✅ Routes et middlewares
 import routes from './routes';
@@ -99,6 +101,7 @@ app.use(configMiddleware);
 // ✅ Routes publiques avec limitation de débit
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/email', emailRoute);
 
 // ✅ Routes API avec limitation de débit
 app.use('/api', apiLimiter, routes);

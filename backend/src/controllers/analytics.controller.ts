@@ -1,3 +1,5 @@
+// src/controllers/analytics.controller.ts
+
 import { Request, Response } from 'express';
 import Message from '../models/message.model';
 import Conversation from '../models/conversation.model';
@@ -24,11 +26,11 @@ export const getAnalyticsSummary = async (req: Request, res: Response) => {
 
     const messagesModifies = messages.filter(m => m.is_modified).length;
 
-    // Comptage par statut
+    // Comptage par statut (en anglais)
     const stats = conversations.reduce((acc, conv) => {
       switch (conv.status) {
-        case 'nouvelle_opportunite': acc.nouvellesOpportunites++; break;
-        case 'renouvellement': acc.renouvellements++; break;
+        case 'new_opportunity': acc.newOpportunities++; break;
+        case 'renouvellement': acc.renewals++; break;
         case 'upsell_cross_sell': acc.upsellCrossSell++; break;
         case 'resiliation': acc.resiliations++; break;
         case 'perte_client': acc.perteClients++; break;
@@ -38,15 +40,15 @@ export const getAnalyticsSummary = async (req: Request, res: Response) => {
       }
       return acc;
     }, {
-      nouvellesOpportunites: 0, renouvellements: 0, upsellCrossSell: 0,
+      newOpportunities: 0, renewals: 0, upsellCrossSell: 0,
       resiliations: 0, perteClients: 0, supportInformation: 0,
       reclamations: 0, prospectsFroids: 0
     });
 
-    // Calcul des "obtention clients" (ex: nouvelles + renouvellements)
-    const obtentionClients = stats.nouvellesOpportunites + stats.renouvellements;
+    // Calcul des "obtention clients"
+    const obtentionClients = stats.newOpportunities + stats.renewals;
 
-    // Simulation d'évolution mensuelle (à remplacer par vos données réelles)
+    // Simulation d'évolution mensuelle
     const trends = {
       conversationsEvolution: 12,
       opportunitesEvolution: 8,
@@ -72,11 +74,9 @@ export const getTimeSeriesAnalytics = async (req: Request, res: Response) => {
   try {
     const { from, to, granularity = 'daily' } = req.query;
     
-    // Conversion des dates
     const startDate = from ? new Date(from as string) : new Date(0);
     const endDate = to ? new Date(to as string) : new Date();
     
-    // Détermination du format de date en fonction de la granularité
     let dateFormat;
     switch (granularity) {
       case 'daily':
@@ -92,7 +92,6 @@ export const getTimeSeriesAnalytics = async (req: Request, res: Response) => {
         dateFormat = '%Y-%m-%d';
     }
     
-    // Agrégation pour les messages
     const messageTrends = await Message.aggregate([
       { $match: { created_at: { $gte: startDate, $lte: endDate } } },
       {
@@ -112,7 +111,6 @@ export const getTimeSeriesAnalytics = async (req: Request, res: Response) => {
       { $sort: { _id: 1 } }
     ]);
     
-    // Agrégation pour les conversations
     const conversationTrends = await Conversation.aggregate([
       { $match: { last_activity_at: { $gte: startDate, $lte: endDate } } },
       {

@@ -1,19 +1,25 @@
+// src/routes/message.route.ts
+
 import { Router } from 'express';
 import { 
-  getMessagesByConversation, 
   createMessage, 
-  validateMessage 
+  getMessageById, 
+  getMessagesByConversation,
+  validateMessage,
+  updateMessageStatus
 } from '../controllers/message.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
+
 const router = Router();
 
-// Accès aux messages d'une conversation
-router.get('/:conversationId/messages', authMiddleware(['validator', 'admin']), getMessagesByConversation);
+// Appliquer l'authentification
+router.use(authenticate);
 
-// Création de message (agents seulement)
-router.post('/', authMiddleware(['agent','admin']), createMessage);
-
-// Validation/rejet (validateurs seulement)
-router.patch('/:id/validate', authMiddleware(['validator','admin']), validateMessage);
+// Routes pour les messages
+router.post('/', createMessage);
+router.get('/:id', getMessageById);
+router.get('/conversations/:conversationId/messages', getMessagesByConversation);
+router.patch('/:id/validate', validateMessage);
+router.patch('/:id/status', updateMessageStatus);
 
 export default router;

@@ -1,95 +1,116 @@
+// src/controllers/conversation.controller.ts
+
 import { Request, Response } from 'express';
 import Conversation from '../models/conversation.model';
 import Message from '../models/message.model';
-import { computeOpportunityScore } from '../services/opportunity.service';
+import {User} from '../models/user.model';
 
-export const getAllConversations = async (req: Request, res: Response) => {
+/**
+ * Marquer une conversation comme terminée
+ */
+export const completeConversation = async (req: Request, res: Response) => {
   try {
-    const { client_id, status, completed } = req.query;
+    const { id } = req.params;
+    const { reason } = req.body;
     
-    const query: any = {};
-    if (client_id) query.client_id = client_id;
-    if (status) query.status = status;
-    if (completed !== undefined) query.is_completed = completed === 'true';
+    const validReasons = ['success', 'failed', 'resiliation', 'new_opportunity', 'upsell_cross_sell'];
+    if (!reason || !validReasons.includes(reason)) {
+      return res.status(400).json({ error: 'Raison invalide' });
+    }
     
-    const conversations = await Conversation.find(query)
-      .populate('client_id', 'email first_name last_name')
-      .sort({ last_activity_at: -1 });
-    
-    res.json(conversations);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des conversations:', error);
-    res.status(500).json({ error: 'Erreur serveur interne' });
-  }
-};
-
-export const getConversationById = async (req: Request, res: Response) => {
-  try {
-    const conversation = await Conversation.findById(req.params.id)
-      .populate('client_id', 'email first_name last_name phone');
-    
+    const conversation = await Conversation.findById(id);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation non trouvée' });
     }
     
-    res.json(conversation);
-  } catch (error) {
-    console.error('Erreur lors de la récupération de la conversation:', error);
-    res.status(500).json({ error: 'Erreur serveur interne' });
-  }
-};
-
-export const createConversation = async (req: Request, res: Response) => {
-  try {
-    const { client_id, ...rest } = req.body;
-    
-    // Vérification si le client existe
-    const client = await Client.findById(client_id);
-    if (!client) {
-      return res.status(404).json({ error: 'Client non trouvé' });
-    }
-    
-    const conversation = new Conversation({
-      client_id,
-      ...rest
-    });
+    conversation.is_completed = true;
+    conversation.status = 'completed';
+    conversation.completion_reason = reason;
     
     await conversation.save();
     
-    // Mise à jour du last_contact_at du client
-    await Client.findByIdAndUpdate(client_id, {
-      last_contact_at: new Date()
+    res.json({
+      message: 'Conversation marquée comme terminée',
+      conversation
     });
-    
-    res.status(201).json(conversation);
   } catch (error) {
-    console.error('Erreur lors de la création de la conversation:', error);
-    res.status(500).json({ error: 'Erreur serveur interne' });
+    console.error('Erreur dans completeConversation:', error);
+    res.status(500).json({ error: 'Erreur lors de la finalisation de la conversation' });
   }
 };
 
-export const updateConversation = async (req: Request, res: Response) => {
+/**
+ * Obtenir les conversations avec filtre par statut
+ */
+export const getConversations = async (req: Request, res: Response) => {
   try {
-    const { status, is_completed } = req.body;
+    const { client_id, status, is_completed } = req.query;
+    const filter: any = {};
     
-    const conversation = await Conversation.findByIdAndUpdate(
-      req.params.id,
-      { status, is_completed },
-      { new: true, runValidators: true }
-    );
+    if (client_id) filter.client_id = client_id;
+    if (status) filter.status = status;
+    if (is_completed !== undefined) filter.is_completed = is_completed === 'true';
+    
+    const conversations = await Conversation.find(filter)
+      .populate('client_id', 'first_name last_name email phone')
+      .sort({ last_message_at: -1 });
+    
+    res.json(conversations);
+  } catch (error) {
+    console.error('Erreur dans getConversations:', error);
+    res.status(500).json({ error: 'Erreur lors du chargement des conversations' });
+  }
+};
+
+/**
+ * Obtenir une conversation par ID
+ */
+export const getConversationById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const conversation = await Conversation.findById(id)
+      .populate('client_id', 'first_name last_name email phone')
+      .populate('messages');
     
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation non trouvée' });
     }
     
-    // Si la conversation est marquée comme terminée, recalculer le score d'opportunité
-    if (is_completed) {
-      await computeOpportunityScore(conversation.client_id);
-    }
-    
     res.json(conversation);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de la conversation:', error);
-    res.status(500).json({ error: 'Erreur serveur interne' });
+    console.error('Erreur dans getConversationById:', error);
+    res.status(500).json({ error: 'Erreur lors du chargement de la conversation' });
+  }
+};
+
+/**
+ * Créer une nouvelle conversation
+ */
+export const createConversation = async (req: Request, res: Response) => {
+  try {
+    const { client_id, subject, status } = req.body;
+    
+    if (!client_id) {
+      return res.status(400).json({ error: 'client_id est requis' });
+    }
+
+    const client = await User.findById(client_id);
+    if (!client) {
+      return res.status(404).json({ error: 'Client non trouvé' });
+    }
+
+    const conversation = new Conversation({
+      client_id,
+      subject: subject || 'Nouvelle conversation',
+      status: status || 'active'
+    });
+
+    await conversation.save();
+
+    res.status(201).json(conversation);
+  } catch (error) {
+    console.error('Erreur dans createConversation:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de la conversation' });
   }
 };
