@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from bson import ObjectId
 from datetime import datetime
 import random
+
 # User type classification now handled by API directly
 
 # Load environment variables
@@ -96,6 +97,7 @@ def append_message_to_conversation(
     conversation_id: str = None,
     subject: str = None,
     conversation_status: str = "nouvelle_opportunite",
+    argumentation: str = None,
 ):
     """
     Append a message to a conversation in the database with backend-compatible schema.
@@ -168,6 +170,10 @@ def append_message_to_conversation(
             "created_at": datetime.utcnow(),  # Backend timestamp field
         }
 
+        # Add argumentation if provided (for AI messages)
+        if argumentation:
+            message_doc["argumentation"] = argumentation
+
         # Insert message
         result = messages_collection.insert_one(message_doc)
         print(f"✅ Created message: {result.inserted_id} from {expediteur}")
@@ -216,19 +222,21 @@ def get_conversations_with_open_status():
         clients_collection = db["clients"]
 
         # Get conversations with conversation_status='open'
-        open_conversations = list(conversations_collection.find({"conversation_status": "open"}))
-        
+        open_conversations = list(
+            conversations_collection.find({"conversation_status": "open"})
+        )
+
         if not open_conversations:
             return []
 
         conversation_list = []
-        
+
         for conv in open_conversations:
             # Get client info
             client_data = clients_collection.find_one({"_id": conv["client_id"]})
             if not client_data:
                 continue  # Skip if client not found
-            
+
             # Get messages for this conversation
             messages = list(
                 messages_collection.find({"conversation_id": conv["_id"]}).sort(
@@ -238,9 +246,12 @@ def get_conversations_with_open_status():
 
             # Build conversation history string
             conversation_history = "\n".join(
-                [f"{msg.get('sender', 'unknown')}: {msg.get('body', '')}" for msg in messages]
+                [
+                    f"{msg.get('sender', 'unknown')}: {msg.get('body', '')}"
+                    for msg in messages
+                ]
             )
-
+            print(f"[Utils]: found conversation history: {conversation_history}")
             # Find latest client message
             latest_client_message = None
             for msg in reversed(messages):
@@ -267,14 +278,14 @@ def get_conversations_with_open_status():
                         "sender": msg.get("sender"),
                         "body": msg.get("body"),
                         "created_at": msg.get("created_at"),
-                        "status": msg.get("status")
+                        "status": msg.get("status"),
                     }
                     for msg in messages
                 ],
                 "conversation_history": conversation_history,
                 "latest_client_message": latest_client_message,
             }
-            
+
             conversation_list.append(conversation_dict)
 
         return conversation_list
@@ -302,7 +313,7 @@ def get_first_open_status_conversation():
 def update_conversation_status(conversation_id: str, new_status: str) -> bool:
     """
     Update the conversation_status field for a given conversation.
-    
+
     :param conversation_id: The _id of the conversation (string or ObjectId)
     :param new_status: New status ('open' or 'pending')
     :return: True if successful, False otherwise
@@ -311,9 +322,9 @@ def update_conversation_status(conversation_id: str, new_status: str) -> bool:
         client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
         db = client.get_database()
-        
+
         conversations_collection = db["conversations"]
-        
+
         # Convert conversation_id to ObjectId if it's a string
         if isinstance(conversation_id, str):
             try:
@@ -323,12 +334,12 @@ def update_conversation_status(conversation_id: str, new_status: str) -> bool:
                 return False
         else:
             conversation_oid = conversation_id
-        
+
         # Validate new status
-        if new_status not in ['open', 'pending']:
+        if new_status not in ["open", "pending"]:
             print(f"❌ Invalid status: {new_status}. Must be 'open' or 'pending'")
             return False
-        
+
         # Update conversation status
         result = conversations_collection.find_one_and_update(
             {"_id": conversation_oid},
@@ -339,23 +350,23 @@ def update_conversation_status(conversation_id: str, new_status: str) -> bool:
                     "last_activity_at": datetime.utcnow(),
                 }
             },
-            return_document=True
+            return_document=True,
         )
-        
+
         if result:
             print(f"✅ Updated conversation {conversation_id} status to: {new_status}")
             return True
         else:
             print(f"❌ Conversation {conversation_id} not found")
             return False
-    
+
     except errors.ServerSelectionTimeoutError as err:
         print("❌ Connection failed:", err)
         return False
     except Exception as e:
         print(f"❌ Error updating conversation status: {e}")
         return False
-    
+
     finally:
         try:
             client.close()
@@ -389,7 +400,7 @@ def create_or_get_client(user_data: dict) -> str:
     """
     Create or get a client from the database based on user_data using API provided user_type.
     Returns the client ObjectId as string.
-    
+
     :param user_data: Dictionary containing user information from AI agent with API user_type
     :return: Client ObjectId as string, or None if error
     """
@@ -398,14 +409,14 @@ def create_or_get_client(user_data: dict) -> str:
         mongo_client.admin.command("ping")
         db = mongo_client.get_database()
         clients_collection = db["clients"]
-        
+
         # Get user type directly from API response
         raw_data = user_data.get("data", {})
         profile = raw_data.get("profile", {})
         user_type = raw_data.get("user_type", "unknown")
-        
+
         print(f"🔍 User type from API: {user_type}")
-        
+
         # Map API user_type to client_type
         if user_type == "personne_physique":
             client_type = "individual"
@@ -413,62 +424,70 @@ def create_or_get_client(user_data: dict) -> str:
             client_type = "company"
         else:
             client_type = "individual"  # Default fallback
-            
+
         # Extract basic information from profile
         email = profile.get("email")
         user_id = raw_data.get("user_id")
-        
+
         # Generate email if not provided
         if not email and user_id:
             email = f"user_{user_id}@generated.local"
         elif not email:
             print("❌ No email or user_id found in user_data")
             return None
-            
+
         # Check if client already exists
         existing_client = clients_collection.find_one({"email": email})
         if existing_client:
             print(f"✅ Found existing client: {existing_client['_id']}")
             return str(existing_client["_id"])
-            
+
         # Extract name information based on user type
         if client_type == "company":
             # For companies
-            company_name = profile.get("company_name", profile.get("raison_sociale", "Unknown Company"))
-            first_name = profile.get("contact_person", profile.get("first_name", company_name))
+            company_name = profile.get(
+                "company_name", profile.get("raison_sociale", "Unknown Company")
+            )
+            first_name = profile.get(
+                "contact_person", profile.get("first_name", company_name)
+            )
             last_name = f"({company_name})"
         else:
             # For individuals
             first_name = profile.get("first_name", profile.get("prenom", "Unknown"))
             last_name = profile.get("last_name", profile.get("nom", "Unknown"))
-            
+
         # Extract other basic fields
         phone = profile.get("telephone", profile.get("phone"))
         age = profile.get("age")
         matricule_fiscale = profile.get("matricule_fiscale")
-        
+
         # Extract job/profession information
         if client_type == "company":
-            job = profile.get("lib_secteur_activite", profile.get("lib_activite", "Unknown Business"))
+            job = profile.get(
+                "lib_secteur_activite", profile.get("lib_activite", "Unknown Business")
+            )
         else:
             job = profile.get("profession", profile.get("lib_activite", "Unknown"))
-            
+
         # Generate unique bd_id
         bd_id = user_id
         if not bd_id or not str(bd_id).isdigit():
             bd_id = random.randint(100000, 999999)
         else:
             bd_id = int(bd_id)
-        
+
         # Ensure bd_id is unique
         while clients_collection.find_one({"bd_id": bd_id}):
             bd_id = random.randint(100000, 999999)
-            
+
         # Create contracts array from profile data
         contracts = []
         current_product = profile.get("lib_produit")
-        recommended_product = profile.get("recommended_product", profile.get("candidate_produit"))
-        
+        recommended_product = profile.get(
+            "recommended_product", profile.get("candidate_produit")
+        )
+
         # Add current product as active contract
         if current_product:
             contract = {
@@ -476,10 +495,10 @@ def create_or_get_client(user_data: dict) -> str:
                 "number": f"CONTRACT_{bd_id}_1",
                 "start_at": datetime.utcnow(),
                 "status": "active",
-                "premium": random.randint(300, 2000)
+                "premium": random.randint(300, 2000),
             }
             contracts.append(contract)
-                
+
         # Add recommended product as prospect contract
         if recommended_product and recommended_product != current_product:
             contract = {
@@ -488,10 +507,10 @@ def create_or_get_client(user_data: dict) -> str:
                 "start_at": datetime.utcnow(),
                 "status": "prospect",
                 "premium": random.randint(400, 3000),
-                "confidence_score": 0.75  # Default confidence
+                "confidence_score": 0.75,  # Default confidence
             }
             contracts.append(contract)
-                
+
         # Calculate simple opportunity score
         opportunity_score = 50  # Base score
         if recommended_product:
@@ -503,14 +522,14 @@ def create_or_get_client(user_data: dict) -> str:
                     opportunity_score += 15
             except:
                 pass
-        
+
         # Build client document matching backend schema
         client_doc = {
             "email": email,
             "phone": phone,
             "first_name": first_name,
             "last_name": last_name,
-            "age": int(age) if age and str(age).replace('.', '').isdigit() else None,
+            "age": int(age) if age and str(age).replace(".", "").isdigit() else None,
             "job": job,
             "bd_id": bd_id,
             "contracts": contracts,
@@ -520,25 +539,29 @@ def create_or_get_client(user_data: dict) -> str:
             "classification_confidence": 1.0,  # High confidence from API
             "fiscal_id": matricule_fiscale,
         }
-        
+
         # Add company-specific fields if applicable
         if client_type == "company":
-            client_doc.update({
-                "company_name": profile.get("company_name", profile.get("raison_sociale")),
-                "sector": profile.get("lib_secteur_activite"),
-                "employee_count": profile.get("nb_employees"),
-            })
-            
+            client_doc.update(
+                {
+                    "company_name": profile.get(
+                        "company_name", profile.get("raison_sociale")
+                    ),
+                    "sector": profile.get("lib_secteur_activite"),
+                    "employee_count": profile.get("nb_employees"),
+                }
+            )
+
         # Remove None values
         client_doc = {k: v for k, v in client_doc.items() if v is not None}
-        
+
         # Insert client
         result = clients_collection.insert_one(client_doc)
         print(f"✅ Created new {client_type} client: {result.inserted_id}")
         print(f"   Name: {first_name} {last_name}")
-        
+
         return str(result.inserted_id)
-        
+
     except errors.ServerSelectionTimeoutError as err:
         print("❌ Connection failed:", err)
         return None
