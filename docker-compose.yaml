@@ -1,0 +1,181 @@
+services:
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    depends_on: [ otel-collector ]
+    networks:
+      - internal
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ${PWD}/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - internal
+  server:
+    image: chromadb/chroma
+    volumes:
+      - ./chroma_data:/data
+    ports:
+      - "8000:8000"
+    networks:
+      - internal
+    environment:
+      - CHROMA_OPEN_TELEMETRY__ENDPOINT=http://otel-collector:4317/
+      - CHROMA_OPEN_TELEMETRY__SERVICE_NAME=chroma
+    depends_on:
+      - otel-collector
+      - zipkin
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: secret
+    depends_on:
+      - mongodb
+    networks:
+      - internal
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./datasets:/var/opt/mssql/backups # ✅ ne monte que le dossier de backups
+    restart: unless-stopped
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    container_name: sqlpad
+    environment:
+      SQLPAD_ADMIN: "admin"
+      SQLPAD_ADMIN_PASSWORD: "admin123"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092" # external/host access (mapped)
+      - "9093:9093" # controller (optional to expose)
+    environment:
+      # KRaft / broker settings
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: Z4Y2B9T5QH7D1A6XK3C2V7
+      KAFKA_BROKER_ID: 1
+
+      # Bind 3 listeners inside the container
+      KAFKA_LISTENERS: "EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093"
+
+      KAFKA_ADVERTISED_LISTENERS: "EXTERNAL://localhost:9092,INTERNAL://kafka:9094,CONTROLLER://kafka:9093"
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+
+      # small-cluster settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+
+    healthcheck:
+      # check the internal listener (reachable inside container)
+      test: [ "CMD-SHELL", "echo > /dev/tcp/127.0.0.1/9094 || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - kafka-net
+
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            my-cluster:
+              properties:
+                # inside compose, AKHQ should use the INTERNAL listener
+                bootstrap.servers: "kafka:9094"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - kafka-net
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/ || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  connect:
+    build:
+      context: .
+      dockerfile: kafka-connect.dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - 8083:8083
+    container_name: kafka-connect
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9094
+      REST_ADVERTISED_HOST_NAME: connect
+      REST_PORT: 8083
+      GROUP_ID: compose-connect-group
+      CONFIG_STORAGE_TOPIC: docker-connect-configs
+      OFFSET_STORAGE_TOPIC: docker-connect-offsets
+      STATUS_STORAGE_TOPIC: docker-connect-status
+      KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECTOR_CLIENT_CONFIG_OVERRIDE_POLICY: All
+      CONNECT_PLUGIN_PATH: "/opt/kafka/plugins"
+    volumes:
+      - ./data:/data
+    networks:
+      - kafka-net
+networks:
+  internal:
+  kafka-net:
+
+
+volumes:
+  chroma_data:

@@ -1,0 +1,40 @@
+[
+  {
+    "user_id":715,
+    "user_type":"personne_physique",
+    "endpoint_strategy":"payment_reminder",
+    "endpoint_key":"pp_payment_reminder",
+    "profile":{
+      "num_piece_identite":10000001,
+      "situation_familiale":"Marie",
+      "lib_secteur_activite":"CADRES ET PROFESSIONS INTELLECTUELLES SUPÉRIEURES",
+      "lib_profession":"MÉDECINS LIBÉRAUX GÉNÉRALISTES",
+      "age_contract":null,
+      "lib_produit":"AUTOMOBILE",
+      "category":"Particulier",
+      "candidate_produit":"TEMPORAIRE DECES;TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (AS);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (BH);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (BTE);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (TSB);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (STEG);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (PERSONNELS BTE);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (PERSONNELS TSB);TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (SYNDICAT AMEN BANK);TEMPORAIRE DECES (AS);TEMPORAIRE DECES TAYSIR MICROFINANCE;ASSURANCE DECES VIE ENTIERE;MIXTE IMPURE A CARACTERE DECES 100 * 50 (AS);MIXTE IMPURE A CARACTERE VIE 50 * 100 (AS);MIXTE REVALORISABLE (AS);ASSURANCE VIE COMPLEMENT RETRAITE - HORIZON;ASSURANCE VIE COMPLEMENT RETRAITE - HORIZON (AS);RENTE EDUCATION;RENTE EDUCATION (AS);INDIVIDUELLE ACCIDENTS;INDIVIDUELLE ACCIDENTS ASSOCIE AU CONTRAT AUTO;SANTE ET PREVOYANCE;AUTOMOBILE",
+      "decision":"Reglement facture",
+      "statut_paiement":"Non payé",
+      "effet_contrat":"2000-01-20",
+      "date_expiration":null,
+      "num_contrat":2000300000030.0,
+      "current_guarantee":"RC - RTI;DEFENSE ET RECOURS;INCENDIE;VOL ;DOMMAGES ET COLLISION;BRIS DE GLACES;P.T.A;ASSISTANCE + et CAR GLASS",
+      "lib_branche":"AUTOMOBILE",
+      "lib_sous_branche":"AUTOMOBILE",
+      "age":35,
+      "nb_sinistres_2025":60.0,
+      "candidate_garanties":"SALIM ASSISTANCE AUTOMOBILE (S2A);ASSISTANCE GOLD;ACCIDENT CARE",
+      "first_name":"Azza",
+      "last_name":"Ben Abdallah",
+      "prenom":"Azza",
+      "nom":"Ben Abdallah",
+      "full_name":"Azza Ben Abdallah",
+      "email":"azzabenabdallah@hotmail.com",
+      "telephone":"+216 90 607 605",
+      "phone":"+216 90 607 605",
+      "matricule_fiscale":"14233329",
+      "client_type":"individual"
+    },
+    "recommended_action":"paiement_facture"
+  }
+]

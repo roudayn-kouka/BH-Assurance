@@ -1,0 +1,35 @@
+[
+  {
+    "user_id":12112,
+    "user_type":"personne_morale",
+    "endpoint_strategy":"product_recommendation",
+    "endpoint_key":"pm_recommendation",
+    "profile":{
+      "lib_secteur_activite":"INTERMÉDIATION FINANCIÈRE",
+      "lib_activite":"CRÉDIT BAIL",
+      "lib_produit":"MULTIRISQUES INFORMATIQUES",
+      "branche":"ENGINEERING",
+      "lib_sous_branche":"MULTIRIQUES INFORMATIQUES",
+      "age_contract":0.0,
+      "category":"Entreprise",
+      "candidate_produit":"SANTE ET PREVOYANCE",
+      "email":"carthagepartner@outlook.com",
+      "nb_products":7,
+      "score":0.6858482826,
+      "good_buyer_score_pct":90.0,
+      "company_name":"Carthage & Partners Ets",
+      "contact_person":"Bassem Ouali",
+      "first_name":"Bassem",
+      "last_name":"Ouali",
+      "prenom":"Bassem",
+      "nom":"Ouali",
+      "telephone":"+216 56 268 531",
+      "phone":"+216 56 268 531",
+      "matricule_fiscale":"TU61015514983",
+      "client_type":"company",
+      "raison_sociale":"Carthage & Partners Ets",
+      "siret":"32836497537528"
+    },
+    "recommended_action":"recommend_produit"
+  }
+]

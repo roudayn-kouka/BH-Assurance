@@ -1,0 +1,80 @@
+[
+  {
+    "user_id":435898,
+    "profile":{
+      "MATRICULE_FISCALE":"0000178D",
+      "LIB_SECTEUR_ACTIVITE":"COMMERCE DE DÉTAIL ET RÉPARATION D ARTICLES DOMESTIQUES",
+      "LIB_ACTIVITE":"COMMERCE DE DÉTAIL DE QUINCAILLERIE",
+      "LIB_PRODUIT":"AUTOMOBILE",
+      "BRANCHE":"AUTOMOBILE",
+      "STATUT_PAIEMENT":"PAYÉ",
+      "NB_SINISTRE":0,
+      "LIB_TYPE_SINISTRE":null,
+      "candidate_product":"MULTIRISQUES PROFESSIONNELLES;INCENDIE COMMERCIAL \/ LEASING;AUTOMOBILE;AUTOMOBILE LEASING",
+      "decision":"renouvellement contrat",
+      "LIB_ETAT_SINISTRE":null,
+      "category":"Commerce & Services",
+      "age_contract":1.0,
+      "EFFET_CONTRAT_DATE":"2024-09-06",
+      "DATE_EXPIRATION_CONTRAT":"2025-09-05",
+      "NUM_CONTRAT":2024301020600,
+      "Lib_Garantie":"RC - RTI;DEFENSE ET RECOURS;INCENDIE;VOL ",
+      "LIB_SOUS_BRANCHE":"AUTOMOBILE",
+      "Candidate_Garanties":"INDIVIDUELLE ACCIDENT;ASSISTANCE ACCIDENT AUTOMOBILE (3A);BRIS DE GLACES",
+      "nb_sinistres_2025":0
+    },
+    "decision":"renouvellement contrat"
+  },
+  {
+    "user_id":435898,
+    "profile":{
+      "MATRICULE_FISCALE":"0000178D",
+      "LIB_SECTEUR_ACTIVITE":"COMMERCE DE DÉTAIL ET RÉPARATION D ARTICLES DOMESTIQUES",
+      "LIB_ACTIVITE":"COMMERCE DE DÉTAIL DE QUINCAILLERIE",
+      "LIB_PRODUIT":"AUTOMOBILE II",
+      "BRANCHE":"AUTOMOBILE",
+      "STATUT_PAIEMENT":"PAYÉ",
+      "NB_SINISTRE":0,
+      "LIB_TYPE_SINISTRE":null,
+      "candidate_product":"MULTIRISQUES PROFESSIONNELLES;INCENDIE COMMERCIAL \/ LEASING;AUTOMOBILE;AUTOMOBILE LEASING;AUTOMOBILE II",
+      "decision":"renouvellement contrat",
+      "LIB_ETAT_SINISTRE":null,
+      "category":"Commerce & Services",
+      "age_contract":1.0,
+      "EFFET_CONTRAT_DATE":"2024-09-06",
+      "DATE_EXPIRATION_CONTRAT":"2025-09-05",
+      "NUM_CONTRAT":2024301020602,
+      "Lib_Garantie":"DEFENSE ET RECOURS;VOL ;P.T.A;RC - RTI;INCENDIE",
+      "LIB_SOUS_BRANCHE":"AUTOMOBILE",
+      "Candidate_Garanties":"BRIS DE GLACES;ASSISTANCE + et CAR GLASS;SALIM ASSISTANCE AUTOMOBILE (S2A)",
+      "nb_sinistres_2025":0
+    },
+    "decision":"renouvellement contrat"
+  },
+  {
+    "user_id":420196,
+    "profile":{
+      "MATRICULE_FISCALE":"0000651B",
+      "LIB_SECTEUR_ACTIVITE":"ACTIVITÉS RÉCRÉATIVES, CULTURELLES ET SPORTIVES",
+      "LIB_ACTIVITE":"AUTRES ACTIVITÉS SPORTIVES",
+      "LIB_PRODUIT":"R.C  ETABLISSEMENT  EDUCATION PHYSIQUE ET SPORTIVES",
+      "BRANCHE":"RISQUES DIVERS",
+      "STATUT_PAIEMENT":"NON PAYÉ",
+      "NB_SINISTRE":0,
+      "LIB_TYPE_SINISTRE":null,
+      "candidate_product":"RC ASSOCIATION SPORTIVES;RC ETABLISSEMENT EDUCATION PHYSIQUE ET SPORTIVES;SANTE ET PREVOYANCE;INDIVIDUELLE ACCIDENTS;R.C  ETABLISSEMENT  EDUCATION PHYSIQUE ET SPORTIVES",
+      "decision":"renouvellement contrat",
+      "LIB_ETAT_SINISTRE":null,
+      "category":"Public & Social Activities",
+      "age_contract":1.0,
+      "EFFET_CONTRAT_DATE":"2024-09-02",
+      "DATE_EXPIRATION_CONTRAT":"2025-09-01",
+      "NUM_CONTRAT":2024204000146,
+      "Lib_Garantie":"DECES;INVALIDITE PERMANENTE;MALADIE;RESPONSABILITE CIVILE",
+      "LIB_SOUS_BRANCHE":"RESPONSABILITE CIVILE",
+      "Candidate_Garanties":"RC- DOMMAGES MATERIELS;RC EFFETS DES CLIENTS;RC- DOMMAGES MATERIELS",
+      "nb_sinistres_2025":0
+    },
+    "decision":"renouvellement contrat"
+  }
+]
