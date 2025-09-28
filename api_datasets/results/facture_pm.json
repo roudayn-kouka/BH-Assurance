@@ -1,0 +1,43 @@
+[
+  {
+    "user_id":1183,
+    "user_type":"personne_morale",
+    "endpoint_strategy":"payment_reminder",
+    "endpoint_key":"pm_payment_reminder",
+    "profile":{
+      "matricule_fiscale":"FR51504183754",
+      "lib_secteur_activite":null,
+      "lib_activite":"NON DEFINI",
+      "lib_produit":"AUTOMOBILE",
+      "branche":"AUTOMOBILE",
+      "statut_paiement":"NON PAYÉ",
+      "nb_sinistre":0,
+      "lib_type_sinistre":null,
+      "candidate_product":"RESPONSABILITE CIVILE;AUTOMOBILE",
+      "decision":"rappel pour regler facture du contrat",
+      "lib_etat_sinistre":null,
+      "category":"Entreprise",
+      "age_contract":null,
+      "effet_contrat_date":"2001-06-17",
+      "date_expiration_contract":null,
+      "num_contrat":2001300000235,
+      "current_guarantee":"RC - RTI;DEFENSE ET RECOURS;INCENDIE;VOL ;P.T.A;P.T.A",
+      "lib_sous_branche":"AUTOMOBILE",
+      "candidate_garanties":"CAR GLASS;CATASTROPHE NATURELLE;SALIM ASSISTANCE AUTOMOBILE (S2A)",
+      "nb_sinistres_2025":0,
+      "company_name":"Moderne Pro SA",
+      "contact_person":"Fares Mzoughi",
+      "first_name":"Fares",
+      "last_name":"Mzoughi",
+      "prenom":"Fares",
+      "nom":"Mzoughi",
+      "email":"admin@moderneprosa.com",
+      "telephone":"+216 91 833 544",
+      "phone":"+216 91 833 544",
+      "client_type":"company",
+      "raison_sociale":"Moderne Pro SA",
+      "siret":"85744287789555"
+    },
+    "recommended_action":"paiement_facture"
+  }
+]

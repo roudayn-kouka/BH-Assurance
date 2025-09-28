@@ -1,0 +1,39 @@
+[
+  {
+    "user_id":132681,
+    "user_type":"personne_physique",
+    "endpoint_strategy":"product_recommendation",
+    "endpoint_key":"pp_recommendation",
+    "profile":{
+      "recommended_product":"TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT (AS)",
+      "recommended_score":90.7999998713,
+      "status":"OK",
+      "situation_familiale":"Marie",
+      "lib_secteur_activite":"STATION  DE SERVICE",
+      "lib_profession":"EMPLOYE DE BANQUE",
+      "age_contract":21.0,
+      "lib_produit":"TEMPORAIRE DECES A CAPITAL DECROISSANT LINEAIREMENT",
+      "category":"Particulier",
+      "lib_branche":"VIE",
+      "lib_sous_branche":"DECES",
+      "age":36,
+      "bought":1,
+      "email":"souad.nouira@tunisie.com",
+      "nb_products":2,
+      "nb_produits_group":"Medium (2-3)",
+      "age_group":"46-60",
+      "labeled_user":"Very loyal customer",
+      "good_buyer_pct":100.0,
+      "first_name":"Souad",
+      "last_name":"Nouira",
+      "prenom":"Souad",
+      "nom":"Nouira",
+      "full_name":"Souad Nouira",
+      "telephone":"+216 25 343 525",
+      "phone":"+216 25 343 525",
+      "matricule_fiscale":"17908660",
+      "client_type":"individual"
+    },
+    "recommended_action":"recommend_produit"
+  }
+]
