@@ -1,0 +1,12 @@
+# Promotion gates. A failed gate keeps the manifest approved=false: latest.json is never moved.
+rag:
+  recall_at_k: 0.80
+  mrr: 0.60
+  source_presence: 1.0         # every retrieved chunk must carry source + version metadata
+  min_chunks: 1
+rl:
+  max_invalid_actions: 0
+  min_relative_uplift: 0.02    # mean return vs champion (rules baseline if none approved)
+  min_seeds_won: 4             # out of the configured seeds
+  max_contacts_per_episode: 6.0
+  robustness_tolerance: 0.05   # worst multiplier may not fall more than 5% below the champion

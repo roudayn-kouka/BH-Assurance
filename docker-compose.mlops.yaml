@@ -1,0 +1,44 @@
+# MLOps override: only the services the existing compose lacks.
+#   docker compose -f docker-compose.yaml -f docker-compose.mlops.yaml up -d policy-service mlflow
+# Airflow is intentionally absent (optional, not part of the first delivery).
+services:
+  policy-service:
+    build:
+      context: .
+      dockerfile: policy_service/Dockerfile
+    container_name: policy-service
+    ports:
+      - "8010:8010"
+    environment:
+      POLICY_MODEL_MANIFEST: /artifacts/rl/latest.json
+      ARTIFACT_ROOT: /artifacts
+    volumes:
+      - ./artifacts:/artifacts:ro
+    networks:
+      - internal
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.2
+    container_name: mlflow
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow_data:/mlflow
+    networks:
+      - internal
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - internal

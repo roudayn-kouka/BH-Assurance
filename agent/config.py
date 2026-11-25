@@ -1,8 +1,12 @@
+import os
+
 # -----------------------------
 # LLM Configuration Constants
 # -----------------------------
-LLM_MODEL = "gemma3n:e4b"
-LLM_SMALL_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+# Overridable for machines that cannot host the default models (see .env.example)
+LLM_MODEL = os.getenv("NEXTBH_LLM_MODEL", "gemma3n:e4b")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+LLM_SMALL_MODEL = os.getenv("NEXTBH_LLM_SMALL_MODEL", "Qwen/Qwen2.5-1.5B-Instruct")
 # -----------------------------
 # Prompt Template Config
 # -----------------------------
@@ -316,3 +320,31 @@ Corps du mail en français, sans titre ni signature.
 COMPANY_NAME = "BH Assurance"
 LANGUAGE = "French"
 MAX_SENTENCES = 5
+
+
+# -----------------------------
+# Next-best-action directives (Next-BH 2.0)
+# -----------------------------
+# The RL policy only chooses the action; the content stays driven by SALES_STRATEGIES and
+# the scenario prompts. Each directive is appended to the intent strategy's system prompt.
+ACTION_DIRECTIVES = {
+    "wait": (
+        "Ne faites aucune nouvelle proposition commerciale dans ce message : répondez uniquement "
+        "à la demande du client."
+    ),
+    "recommend_product": (
+        "Action commerciale retenue : recommander le produit le plus adapté au profil, "
+        "uniquement s'il figure dans les données client ou les informations récupérées."
+    ),
+    "recommend_guarantee": (
+        "Action commerciale retenue : proposer de compléter le contrat existant par une garantie "
+        "candidate listée dans les données client."
+    ),
+    "contract_renewal": (
+        "Action commerciale retenue : accompagner le renouvellement du contrat arrivant à échéance."
+    ),
+    "payment_reminder": (
+        "Action commerciale retenue : rappeler avec bienveillance la régularisation du paiement en "
+        "attente, sans proposer de nouveau produit."
+    ),
+}

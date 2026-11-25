@@ -35,7 +35,8 @@ FACTURE_PP_FILE = "./reglement_facture_pp.csv"
 RENOUV_PP_FILE = "./renouvellement_contrat_pp.csv"
 RENOUV_PM_FILE = "./renouvellement_pm.csv"
 
-RESULTS_DIR = "results"
+# sample outputs are versioned in results/; local runs can write elsewhere
+RESULTS_DIR = os.getenv("API_RESULTS_DIR", "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ----------------- Helpers for aliasing -----------------
@@ -685,3 +686,56 @@ def renouvellement_pp():
         "pp_renewal",
     )
     return UserResponse.model_validate(result)
+
+
+# ----------------- Features by explicit identifier (Next-BH 2.0) -----------------
+
+ENDPOINT_FILES = {
+    "recommend_pm": (PM_FILE, ","),
+    "recommend_pp": (PP_FILE, ";"),
+    "facture_pm": (FACTURE_PM_FILE, ";"),
+    "facture_pp": (FACTURE_PP_FILE, ";"),
+    "renouvellement_pm": (RENOUV_PM_FILE, ";"),
+    "renouvellement_pp": (RENOUV_PP_FILE, ";"),
+}
+
+
+@app.get(
+    "/features/{endpoint_key}/{ref}",
+    include_in_schema=True,
+    summary="Profil et scores d'un client identifié",
+    description=(
+        "Retourne le profil d'un client désigné par son identifiant REF (sans nom généré ni tirage "
+        "aléatoire), avec ses scores CatBoost normalisés. Source de features pour le policy-service ; "
+        "les endpoints de recommandation existants restent inchangés."
+    ),
+    tags=["Features"],
+    responses={404: {"model": ErrorResponse}},
+)
+def client_features(endpoint_key: str, ref: str):
+    if endpoint_key not in ENDPOINT_FILES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"endpoint_key inconnu: {endpoint_key}")
+    path, sep = ENDPOINT_FILES[endpoint_key]
+    df = safe_read_csv(path, sep=sep)
+    if df is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Fichier introuvable ou illisible: {path}")
+
+    ref_cols = [c for c in df.columns if c.upper().startswith("REF")]
+    matches = df[df[ref_cols].astype(str).eq(str(ref)).any(axis=1)] if ref_cols else df.iloc[0:0]
+    if matches.empty:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Aucun client {ref} dans {endpoint_key}")
+
+    profile = map_profile_keys(matches.iloc[0].to_dict())
+    for key in ("good_buyer_score_pct", "good_buyer_pct", "recommended_score"):
+        if key in profile:
+            profile[key] = normalize_score_raw(profile[key])
+    return {
+        "user_id": ref,
+        "endpoint_key": endpoint_key,
+        "user_type": "personne_morale" if endpoint_key.endswith("_pm") else "personne_physique",
+        "profile": profile,
+        "matches": int(len(matches)),
+    }

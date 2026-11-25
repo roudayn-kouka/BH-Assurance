@@ -1,3 +1,4 @@
+import os
 import re
 import logging
 from .config import *
@@ -6,17 +7,20 @@ import unicodedata
 from transformers import pipeline, AutoTokenizer
 
 
+INTENT_MODEL = os.getenv("NEXTBH_INTENT_MODEL", "joeddav/xlm-roberta-large-xnli")
+
+
 def initialize_classifier():
     """Initialize the classifier with proper error handling."""
     try:
         # Try with use_fast=False first
         tokenizer = AutoTokenizer.from_pretrained(
-            "joeddav/xlm-roberta-large-xnli", use_fast=False, trust_remote_code=False
+            INTENT_MODEL, use_fast=False, trust_remote_code=False
         )
 
         classifier = pipeline(
             "zero-shot-classification",
-            model="joeddav/xlm-roberta-large-xnli",
+            model=INTENT_MODEL,
             tokenizer=tokenizer,
             device=-1,  # Force CPU usage to avoid GPU issues
         )

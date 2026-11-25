@@ -1,0 +1,14 @@
+# Reference retrieval set. expected_sources are matched as substrings of the chunk "source" metadata.
+# Extend with real questions validated by the business team; keep a holdout part unseen by prompt tuning.
+- question: "Quelles sont les garanties de l'assurance automobile ?"
+  expected_sources: ["CG-Automobile"]
+- question: "Que couvre l'assurance vie en cas de décès ?"
+  expected_sources: ["CG-Vie"]
+- question: "Quels frais médicaux sont remboursés par l'assurance santé ?"
+  expected_sources: ["CG-Santé"]
+- question: "Quelles marchandises sont couvertes par l'assurance transport ?"
+  expected_sources: ["CG-Transport"]
+- question: "Quelles sont les exclusions de la garantie incendie ?"
+  expected_sources: ["CG-IARD"]
+- question: "Comment est couvert un chantier en assurance engineering ?"
+  expected_sources: ["CG-Engineering"]

@@ -98,6 +98,7 @@ def append_message_to_conversation(
     subject: str = None,
     conversation_status: str = "nouvelle_opportunite",
     argumentation: str = None,
+    decision: dict = None,
 ):
     """
     Append a message to a conversation in the database with backend-compatible schema.
@@ -111,6 +112,7 @@ def append_message_to_conversation(
     :param conversation_id: The _id of the conversation (string, optional)
     :param subject: Subject of the message
     :param conversation_status: Status for new conversations (backend enum)
+    :param decision: Next-best-action metadata (decision_id, action, model_version, sources...)
     :return: Tuple of (message_id, conversation_id)
     """
     try:
@@ -173,6 +175,8 @@ def append_message_to_conversation(
         # Add argumentation if provided (for AI messages)
         if argumentation:
             message_doc["argumentation"] = argumentation
+        if decision:
+            message_doc["decision"] = decision
 
         # Insert message
         result = messages_collection.insert_one(message_doc)

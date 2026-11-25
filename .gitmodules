@@ -1,0 +1,3 @@
+[submodule "web/BH-Assurance"]
+	path = web/BH-Assurance
+	url = https://github.com/roudayn-kouka/BH-Assurance.git

@@ -1,0 +1,23 @@
+# Pipeline A — Data & RAG
+source_dirs:
+  # one sub-folder per category, e.g. data/rag_docs/CG-Automobile/*.pdf (same layout as agent/rag_model)
+  - data/rag_docs
+extensions: [".pdf", ".csv", ".txt", ".md"]
+category_map:
+  CG-Vie: Assurance Vie
+  CG-Santé: Assurance Santé
+  CG-Transport: Assurance Transport
+  CG-IARD: Assurance IARD
+  CG-Engineering: Assurance Engineering
+  CG-Automobile: Assurance Automobile
+chunk_size: 500
+chunk_overlap: 50
+embedding_model: intfloat/multilingual-e5-large
+embedding_batch_size: 32
+chroma:
+  host: localhost
+  port: 8000
+  collection_prefix: legal_docs
+evaluation:
+  reference_questions: mlops/data_rag/reference_questions.yaml
+  top_k: 5

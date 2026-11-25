@@ -7,4 +7,11 @@ __pycache__/
 *.csv
 credentials.json
 token.json
-kafka-data/
+kafka-data/.venv/
+.pytest_cache/
+.ruff_cache/
+mlruns/
+artifacts/
+mlops/state/
+mlflow_data/
+.run/

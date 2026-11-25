@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 from datetime import datetime
 from langchain_community.document_loaders import CSVLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import torch
 import logging
@@ -89,10 +89,25 @@ def safe_load_sentence_transformer(model_name: str) -> SentenceTransformer:
             raise e
 
 
+# --- Loading & chunking, shared with the batch pipeline (mlops/data_rag/ingest_documents.py) ---
+def load_documents(file_path):
+    """Load a PDF (one doc per page) or a CSV (one doc per row) as langchain Documents."""
+    suffix = str(file_path).lower().rsplit(".", 1)[-1]
+    if suffix == "pdf":
+        return PyPDFLoader(str(file_path)).load()
+    if suffix == "csv":
+        return CSVLoader(str(file_path), encoding="utf-8").load()
+    raise ValueError(f"Unsupported document type: {file_path}")
+
+
+def split_documents(docs, chunk_size, chunk_overlap):
+    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    return splitter.split_documents(docs)
+
+
 # --- Shared processing pipeline for PDFs & CSVs ---
 def process_documents(docs, file_path, category, collection, existing_ids, model, model_name, chunk_prefix, chunk_size, chunk_overlap):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    docs = splitter.split_documents(docs)
+    docs = split_documents(docs, chunk_size, chunk_overlap)
 
     chunk_ids_all = [f"{chunk_prefix}_{i}" for i in range(len(docs))]
     present_ids = [cid for cid in chunk_ids_all if cid in existing_ids]
@@ -174,13 +189,11 @@ def process_documents(docs, file_path, category, collection, existing_ids, model
 
 # --- PDF handler ---
 def process_pdf_file(pdf_file, category, collection, existing_ids, model, model_name, chunk_size, chunk_overlap):
-    loader = PyPDFLoader(str(pdf_file))
-    pages = loader.load()
+    pages = load_documents(pdf_file)
     process_documents(pages, pdf_file, category, collection, existing_ids, model, model_name, pdf_file.stem, chunk_size, chunk_overlap)
 
 
 # --- CSV handler ---
 def process_csv_file(csv_file, category, collection, existing_ids, model, model_name, chunk_size, chunk_overlap):
-    loader = CSVLoader(str(csv_file), encoding="utf-8")
-    rows = loader.load()
+    rows = load_documents(csv_file)
     process_documents(rows, csv_file, category, collection, existing_ids, model, model_name, csv_file.stem, chunk_size, chunk_overlap)

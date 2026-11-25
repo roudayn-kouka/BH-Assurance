@@ -1,0 +1,79 @@
+name: MLOps pipelines
+
+# Two batch pipelines only. Training never blocks serving: it runs here, and a candidate
+# reaches production only through an approved manifest + explicit promotion.
+on:
+  schedule:
+    - cron: "0 3 * * 1"          # weekly RL run (candidate only, no promotion)
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "rl | rag | promote | rollback"
+        required: true
+        default: rl
+      kind:
+        description: "rl | rag (promote / rollback)"
+        default: rl
+      version:
+        description: "version to promote, or target of rollback (empty = previous)"
+        default: ""
+
+env:
+  ARTIFACT_ROOT: artifacts
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  DVC_REMOTE: ${{ secrets.DVC_REMOTE }}
+
+jobs:
+  pipeline:
+    if: github.event_name == 'schedule' || inputs.task == 'rl' || inputs.task == 'rag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install (CPU torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r mlops/requirements.txt
+      - name: Pull versioned data and artifacts (DVC)
+        if: env.DVC_REMOTE != ''
+        run: |
+          dvc remote add -d -f storage "$DVC_REMOTE"
+          dvc pull || true
+      - name: Run pipeline
+        run: |
+          if [ "${{ inputs.task }}" = "rag" ]; then python -m mlops.data_rag.run || [ $? -eq 2 ];
+          else python -m mlops.rl.run || [ $? -eq 2 ]; fi
+      - name: Push artifacts (DVC)
+        if: env.DVC_REMOTE != ''
+        run: dvc push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_id }}
+          path: artifacts/*/reports
+
+  promote:
+    if: inputs.task == 'promote' || inputs.task == 'rollback'
+    runs-on: ubuntu-latest
+    environment: production        # configure required reviewers on this environment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pydantic pyyaml dvc
+      - name: Pull artifacts
+        run: dvc remote add -d -f storage "$DVC_REMOTE" && dvc pull
+      - name: Promote or roll back (refuses unapproved manifests)
+        run: |
+          if [ "${{ inputs.task }}" = "promote" ]; then
+            python -m mlops.promote ${{ inputs.kind }} promote "${{ inputs.version }}" --by "${{ github.actor }}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            python -m mlops.promote ${{ inputs.kind }} rollback --to "${{ inputs.version }}" --by "${{ github.actor }}"
+          else
+            python -m mlops.promote ${{ inputs.kind }} rollback --by "${{ github.actor }}"
+          fi
+      - name: Publish pointer
+        run: dvc push

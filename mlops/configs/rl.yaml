@@ -1,0 +1,58 @@
+# Pipeline B — Reinforcement Learning (next-best-action)
+action_schema: v1
+feature_schema: v1
+
+business_rules:
+  max_contacts_30d: 3          # contact fatigue: only "wait" allowed beyond this
+  renewal_window_days: [-30, 60]
+
+simulator:
+  horizon_steps: 12            # one step = one week
+  step_days: 7
+  contact_cost: 0.05
+  invalid_action_penalty: 1.0
+  fatigue_alpha: 0.6           # conversion *= exp(-alpha * contacts_30d)
+  unsubscribe_prob_when_fatigued: 0.15
+  unsubscribe_penalty: 0.5
+  churn_penalty: 1.0
+  conversion_multiplier: 1.0   # varied at evaluation for sensitivity
+  actions:
+    recommend_product:   {base_prob: 0.18, value: 1.0}
+    recommend_guarantee: {base_prob: 0.25, value: 0.4}
+    contract_renewal:    {base_prob: 0.55, value: 1.5}
+    payment_reminder:    {base_prob: 0.50, value: 0.5}
+  # synthetic customer generator, overridden by the profile pool when CatBoost CSVs are available
+  synthetic:
+    company_share: 0.3
+    unpaid_share: 0.2
+    active_contract_share: 0.8
+
+data:
+  # CatBoost / business CSVs read by api_datasets (gitignored, versioned with DVC)
+  profile_csvs:
+    - {path: api_datasets/catboost_pm.csv, sep: ","}
+    - {path: api_datasets/catboost_pp_updated.csv, sep: ";"}
+    - {path: api_datasets/renouvellement_contrat_pp.csv, sep: ";"}
+    - {path: api_datasets/renouvellement_pm.csv, sep: ";"}
+    - {path: api_datasets/reglement_facture_pp.csv, sep: ";"}
+    - {path: api_datasets/facture_pm.csv, sep: ";"}
+  events_jsonl: null           # offline export of topic decision_events, if any
+  kafka_topic: decision_events
+
+training:
+  algorithms: [linucb, maskable_ppo]   # maskable_ppo skipped with a warning if sb3-contrib is missing
+  seeds: [0, 1, 2, 3, 4]
+  ppo:
+    total_timesteps: 60000
+    learning_rate: 0.0003
+    n_steps: 1024
+    batch_size: 256
+    gamma: 0.97
+    ent_coef: 0.01
+  linucb:
+    alpha: 0.5
+    train_episodes: 3000
+
+evaluation:
+  episodes_per_seed: 400
+  conversion_multipliers: [0.8, 1.0, 1.2]

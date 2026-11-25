@@ -1,0 +1,68 @@
+{
+  "revision": "wave3-synthetic-fixture-1",
+  "entries": [
+    {
+      "id": "fleet-vehicles",
+      "product": "Synthetic Fleet Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Flottes 1.1",
+      "supports": [
+        "owned_delivery_vans",
+        "owned_service_cars"
+      ],
+      "excerpt": "Le produit vise les flottes de véhicules utilitaires légers et de voitures de service détenus par l’entreprise."
+    },
+    {
+      "id": "fleet-domestic",
+      "product": "Synthetic Fleet Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Flottes 1.2",
+      "supports": [
+        "domestic_fleet"
+      ],
+      "excerpt": "Le périmètre décrit les trajets professionnels effectués sur le territoire national."
+    },
+    {
+      "id": "office-premises",
+      "product": "Synthetic Office Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Locaux 1.1",
+      "supports": [
+        "office_premises",
+        "office_fire"
+      ],
+      "excerpt": "Le volet locaux professionnels porte sur les dommages matériels causés par un incendie aux bureaux déclarés."
+    },
+    {
+      "id": "office-contents",
+      "product": "Synthetic Office Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Locaux 1.2",
+      "supports": [
+        "office_contents"
+      ],
+      "excerpt": "Le mobilier et le matériel de bureau déclarés figurent dans la rubrique contenu des locaux."
+    },
+    {
+      "id": "cargo-domestic",
+      "product": "Synthetic Cargo Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Transport 1.1",
+      "supports": [
+        "domestic_road_cargo",
+        "packaged_goods"
+      ],
+      "excerpt": "La fiche décrit les marchandises emballées transportées par voie routière sur le territoire national."
+    },
+    {
+      "id": "cargo-handling",
+      "product": "Synthetic Cargo Cover",
+      "document": "Catalogue fictif Wave 3",
+      "locator": "Transport 1.2",
+      "supports": [
+        "loading_damage"
+      ],
+      "excerpt": "Les dommages matériels aux marchandises déclarées pendant les opérations de chargement sont traités dans la rubrique manutention."
+    }
+  ]
+}

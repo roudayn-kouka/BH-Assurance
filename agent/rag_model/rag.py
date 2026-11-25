@@ -9,9 +9,9 @@ import torch
 
 # --- CONFIG ---
 CHROMA_COLLECTION_NAME = "legal_docs"
-CHROMA_HOST = "localhost"
-CHROMA_PORT = 8000
-EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large"
+CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
+EMBEDDING_MODEL_NAME = os.getenv("NEXTBH_EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
 TOP_K = 5  # default number of results to retrieve
 MODEL_NAME = "intfloat/multilingual-e5-large"
 
@@ -22,6 +22,32 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
+
+def load_index_manifest(path: str):
+    """
+    Read rag/latest.json (written by mlops/data_rag). Only an approved manifest is used;
+    anything else keeps the legacy collection.
+    """
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, ValueError) as e:
+        logger.warning("RAG manifest %s unreadable (%s); using legacy collection", path, e)
+        return None
+    if manifest.get("kind") != "rag" or manifest.get("approved") is not True:
+        logger.warning("RAG manifest %s is not an approved rag manifest; using legacy collection", path)
+        return None
+    return manifest
+
+
+INDEX_MANIFEST = load_index_manifest(os.getenv("RAG_INDEX_MANIFEST", ""))
+if INDEX_MANIFEST:
+    CHROMA_COLLECTION_NAME = INDEX_MANIFEST["collection_name"]
+    EMBEDDING_MODEL_NAME = INDEX_MANIFEST["embedding_model"]
+INDEX_VERSION = INDEX_MANIFEST["version"] if INDEX_MANIFEST else "legacy"
 
 FALLBACK_SMALL = "all-MiniLM-L6-v2"  # lightweight fallback
 FALLBACK_MEDIUM = "intfloat/multilingual-e5-base"  # medium fallback
@@ -95,15 +121,39 @@ def load_embedding_model(preferred=EMBEDDING_MODEL_NAME):
             raise
 
 
-embedding_model = load_embedding_model()
+embedding_model = load_embedding_model(EMBEDDING_MODEL_NAME)
 
 try:
     logger.info("Connecting to Chroma vector store...")
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
-    collection = chroma_client.get_or_create_collection(name="legal_docs")
+    chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+    if INDEX_MANIFEST:
+        # an approved index must already exist; never create an empty one in its place
+        collection = chroma_client.get_collection(name=CHROMA_COLLECTION_NAME)
+    else:
+        collection = chroma_client.get_or_create_collection(name=CHROMA_COLLECTION_NAME)
+    logger.info("RAG index %s (collection %s)", INDEX_VERSION, CHROMA_COLLECTION_NAME)
 except Exception as e:
     logger.exception("Failed to connect to Chroma vector store")
     raise e
+
+
+def get_index_info() -> Dict:
+    return {
+        "index_version": INDEX_VERSION,
+        "collection": CHROMA_COLLECTION_NAME,
+        "embedding_model": EMBEDDING_MODEL_NAME,
+    }
+
+
+def source_of(doc: Dict) -> Dict:
+    """Provenance of a retrieved chunk, as cited to compliance and the admin dashboard."""
+    meta = doc.get("metadata") or {}
+    return {
+        "source_id": meta.get("document_id") or meta.get("source", "unknown"),
+        "source": meta.get("source", "unknown"),
+        "document_version": meta.get("document_version") or meta.get("added_at", "unknown"),
+        "page": meta.get("page"),
+    }
 
 
 def retrieve(query: str, top_k: int = TOP_K) -> List[Dict]:
@@ -127,13 +177,26 @@ def retrieve(query: str, top_k: int = TOP_K) -> List[Dict]:
         for i, (doc, meta) in enumerate(
             zip(results["documents"][0], results["metadatas"][0]), start=1
         ):
-            output.append({"document": doc, "metadata": meta})  # keep it as dict
+            item = {"document": doc, "metadata": meta or {}}  # keep it as dict
+            item.update(source_of(item))
+            output.append(item)
 
         logger.info(f"Retrieved {len(output)} documents")
         return output
     except Exception as e:
-        logger.exception("Error during retrieval: " + e)
+        logger.exception("Error during retrieval: %s", e)
         return []
+
+
+def build_context(docs: List[Dict]) -> str:
+    context_parts = []
+    for idx, d in enumerate(docs, 1):
+        src = d.get("metadata", {}).get("source", "unknown")
+        version = d.get("document_version", "unknown")
+
+        print(f"\nRAG]: Doc {idx} from {src} (preview: {d})\n")
+        context_parts.append(f"[Doc {idx} - {src} (version {version})]\n{d['document']}\n\n")
+    return "".join(context_parts)
 
 
 def retrieve_context(query: str, top_k: int = TOP_K) -> str:
@@ -151,14 +214,7 @@ def retrieve_context(query: str, top_k: int = TOP_K) -> str:
 
         print(f"\nRetrieved {len(docs)} documents for query: {query}")
 
-        context_parts = []
-        for idx, d in enumerate(docs, 1):
-            src = d.get("metadata", {}).get("source", "unknown")
-
-            print(f"\nRAG]: Doc {idx} from {src} (preview: {d})\n")
-            context_parts.append(f"[Doc {idx} - {src}]\n{d['document']}\n\n")
-
-        context = "".join(context_parts)
+        context = build_context(docs)
         print(f"\nFinal context length: {len(context)} characters\n", "=" * 50)
         return context
 

@@ -1,8 +1,9 @@
+import os
 import requests
 import random
 from typing import Optional, Dict, Any
 
-BASE_URL = "http://localhost:8083"
+BASE_URL = os.getenv("RECO_API_URL", "http://localhost:8083")
 
 # Available endpoints with their strategies
 ENDPOINTS = {

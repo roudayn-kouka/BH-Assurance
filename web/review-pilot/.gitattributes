@@ -1,0 +1,2 @@
+*.patch text eol=lf
+dashboard.patch whitespace=-blank-at-eol

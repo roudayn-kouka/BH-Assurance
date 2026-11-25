@@ -1,5 +1,11 @@
 # Next Deal — Comprehensive Documentation
 
+Le [suivi d’avancement de Next-BH](docs/AVANCEMENT.md) décrit le périmètre livré, l’architecture du pilote de recommandation, les preuves Jira et GitHub, et les travaux restants. Le [prompt du rapport en français](docs/PROMPT_RAPPORT_AVANCEMENT.md) précise les fichiers à produire et les captures à réunir.
+
+**Démarrage local** : `python scripts/nextbh.py setup`, puis `models`, `up`, `rag`, `rl`, `agent`, `dashboard` — voir le [guide de démarrage local](docs/DEMARRAGE_LOCAL.md) et la [vérification de bout en bout](docs/nextbh2/VERIFICATION_LOCALE.md).
+
+Le périmètre MLOps et RL de Next-BH 2.0 (pipelines Data & RAG et RL, policy-service, boucle d’événements), activable par feature flags, est décrit dans [docs/nextbh2/](docs/nextbh2/RUNBOOK.md) : [audit](docs/nextbh2/AUDIT.md), [exploitation](docs/nextbh2/RUNBOOK.md) et [intégration au dashboard](docs/nextbh2/INTEGRATION.md).
+
 ## Executive Summary
 
 **Next Deal** is a modular, AI-driven insurance sales and client engagement platform for BH Assurance. It leverages state-of-the-art conversational AI, retrieval-augmented generation (RAG), intent analysis, and multi-channel integration (web, email, Kafka) to automate, personalize, and streamline client interactions, product recommendations, and operational workflows.
@@ -75,13 +81,13 @@ The platform is composed of several tightly integrated subsystems:
 
 ### 7. **Web Frontend**
 
-- **Location:** [`web/BH-Assurance/frontend/`](web/BH-Assurance/frontend/)
+- **Location:** [`frontend/` in the verified dashboard snapshot](https://github.com/roudayn-kouka/BH-Assurance/tree/a18e1e0fc402af64d63a16fba5532bc357d077e1/frontend)
 - **Function:** Provides dashboards for analytics, validation, and client management.
 - **Usage:** Admins review, edit, and approve AI-generated responses; monitor KPIs and workflow status.
 
 ### 8. **Backend (Node.js/Express)**
 
-- **Location:** [`web/BH-Assurance/backend/`](web/BH-Assurance/backend/)
+- **Location:** [`backend/` in the verified dashboard snapshot](https://github.com/roudayn-kouka/BH-Assurance/tree/a18e1e0fc402af64d63a16fba5532bc357d077e1/backend)
 - **Function:** REST API for clients, conversations, messages, and email webhooks; implements security and business logic.
 - **Usage:** Serves both frontend and agent; enforces rate limiting and authentication.
 
@@ -104,6 +110,14 @@ The platform is composed of several tightly integrated subsystems:
 ---
 
 ## Deployment & Operations
+
+For a local walkthrough with synthetic data, see the [company recommendation demo](docs/RECOMMENDATION_DEMO.md).
+
+The [human review demo](docs/DRAFT_REVIEW_DEMO.md) covers the isolated dashboard. The [Wave 3 staging runbook](docs/STAGING_PILOT.md) covers the full synthetic recommendation and review pilot, including its documented CI results and live staging acceptance criteria.
+
+### Historical platform setup
+
+The prerequisites and setup steps below describe the earlier broad platform, including email and Kafka. Use the guides above to run the current synthetic pilot from a clean Next-BH checkout. See the [dashboard source notes](docs/DASHBOARD_SOURCE.md) for the available snapshot and the current gitlink.
 
 ### Prerequisites
 

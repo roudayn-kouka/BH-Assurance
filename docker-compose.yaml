@@ -10,13 +10,14 @@ services:
     image: otel/opentelemetry-collector-contrib:0.111.0
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-      - ${PWD}/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     networks:
       - internal
   server:
     image: chromadb/chroma
     volumes:
-      - ./chroma_data:/data
+      # named volume: SQLite cannot lock files on a Windows bind mount (read-only database)
+      - chroma_data:/data
     ports:
       - "8000:8000"
     networks:
@@ -33,35 +34,41 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./mongo_data:/data/db
+      - mongo_data:/data/db
     networks:
       - internal
     healthcheck:
-      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')" ]
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 30s
   mongo-express:
-    image: mongo-express:latest
+    image: mongo-express:1.0.2
     container_name: mongo-express
     restart: always
     ports:
       - "8081:8081"
     environment:
+      # mongo-express 1.x reads the URL; SERVER/PORT are kept for older images
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017
       ME_CONFIG_MONGODB_SERVER: mongodb
       ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: secret
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-secret}
     depends_on:
       - mongodb
     networks:
       - internal
+  # Optional profiles keep the default stack within a small Docker VM:
+  #   docker compose --profile sql up -d      SQL Server + sqlpad (historical exploration, ~2 GB)
+  #   docker compose --profile events up -d   Kafka + AKHQ + Kafka Connect (decision_events)
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: sqlserver
+    profiles: [ sql ]
     environment:
-      SA_PASSWORD: "YourStrong!Passw0rd"
+      SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong!Passw0rd}"
       ACCEPT_EULA: "Y"
     ports:
       - "1433:1433"
@@ -71,15 +78,17 @@ services:
   sqlpad:
     image: sqlpad/sqlpad:latest
     container_name: sqlpad
+    profiles: [ sql ]
     environment:
-      SQLPAD_ADMIN: "admin"
-      SQLPAD_ADMIN_PASSWORD: "admin123"
+      SQLPAD_ADMIN: "${SQLPAD_ADMIN:-admin}"
+      SQLPAD_ADMIN_PASSWORD: "${SQLPAD_ADMIN_PASSWORD:-admin123}"
     ports:
       - "3000:3000"
     restart: unless-stopped
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.7.1
     container_name: kafka
+    profiles: [ events ]
     restart: unless-stopped
     ports:
       - "9092:9092" # external/host access (mapped)
@@ -96,7 +105,8 @@ services:
       # Bind 3 listeners inside the container
       KAFKA_LISTENERS: "EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093"
 
-      KAFKA_ADVERTISED_LISTENERS: "EXTERNAL://localhost:9092,INTERNAL://kafka:9094,CONTROLLER://kafka:9093"
+      # the KRaft controller listener must not be advertised to clients
+      KAFKA_ADVERTISED_LISTENERS: "EXTERNAL://localhost:9092,INTERNAL://kafka:9094"
 
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
       KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
@@ -107,6 +117,7 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_DEFAULT_REPLICATION_FACTOR: 1
       KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
 
     healthcheck:
       # check the internal listener (reachable inside container)
@@ -121,6 +132,7 @@ services:
   akhq:
     image: tchiotludo/akhq:latest
     container_name: akhq
+    profiles: [ events ]
     restart: unless-stopped
     ports:
       - "8090:8080"
@@ -151,8 +163,9 @@ services:
       kafka:
         condition: service_healthy
     ports:
-      - 8083:8083
+      - "8084:8083" # 8083 on the host is the recommendation API used by the agent
     container_name: kafka-connect
+    profiles: [ events ]
     environment:
       BOOTSTRAP_SERVERS: kafka:9094
       REST_ADVERTISED_HOST_NAME: connect
@@ -179,3 +192,4 @@ networks:
 
 volumes:
   chroma_data:
+  mongo_data:

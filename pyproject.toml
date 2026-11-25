@@ -1,0 +1,27 @@
+[project]
+name = "next-bh"
+version = "2.0.0"
+description = "Next-BH 2.0: agent commercial, pipelines MLOps (Data & RAG, RL) et policy-service"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+include = ["mlops*", "policy_service*"]
+
+[tool.pytest.ini_options]
+testpaths = ["agent/tests", "mlops/tests", "policy_service/tests", "tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["web", "BH-Assurance.git", "pipeline"]
+
+[tool.ruff.lint]
+# CI lints the Next-BH 2.0 code (see .github/workflows/ci.yml); legacy modules are not reformatted
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# the agent runs with agent/ on sys.path: its top-level modules are first-party
+known-first-party = ["mlops", "policy_service", "config", "feature_flags", "compliance",
+                     "orchestrator", "utils", "agent", "rag_model", "intent_analysis", "conftest"]

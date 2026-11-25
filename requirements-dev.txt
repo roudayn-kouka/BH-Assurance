@@ -1,0 +1,11 @@
+# Test / CI dependencies (agent heavy deps are stubbed in agent/tests/conftest.py)
+pytest>=8
+ruff>=0.6
+requests>=2.31
+pyyaml>=6
+pydantic>=2.5
+numpy>=1.26
+gymnasium>=0.29
+fastapi>=0.110
+httpx>=0.27
+pandas>=2.0

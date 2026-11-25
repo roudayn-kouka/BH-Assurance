@@ -1,0 +1,362 @@
+diff --git a/backend/src/models/message.model.ts b/backend/src/models/message.model.ts
+index 9d9bea9..687bc95 100644
+--- a/backend/src/models/message.model.ts
++++ b/backend/src/models/message.model.ts
+@@ -7,7 +7,9 @@ export interface IMessage extends Document {
+   sender: 'client' | 'agent' | 'ai';
+   body: string;
+   direction: 'inbox' | 'sent';
+-  status: 'open' | 'pending' | 'validated' | 'sent' | 'blocked';
++  status: 'open' | 'pending' | 'validated' | 'rejected' | 'sent' | 'blocked';
++  reviewed_by?: string;
++  reviewed_at?: Date;
+   is_client_response: boolean;
+   is_modified: boolean; 
+   created_at: Date;
+@@ -42,10 +44,12 @@ const MessageSchema = new Schema<IMessage>({
+   },
+   status: { 
+     type: String, 
+-    enum: ['open', 'pending', 'validated', 'sent', 'blocked'], 
++    enum: ['open', 'pending', 'validated', 'rejected', 'sent', 'blocked'],
+     default: 'open',
+     required: true 
+   },
++  reviewed_by: { type: String },
++  reviewed_at: { type: Date },
+   is_client_response: { 
+     type: Boolean, 
+     default: false 
+diff --git a/backend/src/pilot-review.ts b/backend/src/pilot-review.ts
+new file mode 100644
+index 0000000..3035e8b
+--- /dev/null
++++ b/backend/src/pilot-review.ts
+@@ -0,0 +1,99 @@
++import { randomBytes } from 'node:crypto';
++import { readFile } from 'node:fs/promises';
++import { resolve } from 'node:path';
++import bcrypt from 'bcryptjs';
++import express from 'express';
++import mongoose from 'mongoose';
++import { login } from './controllers/auth.controller';
++import { authenticate, authorize } from './middleware/auth.middleware';
++import Message from './models/message.model';
++import { User } from './models/user.model';
++
++const reviewEmail = 'reviewer@example.invalid';
++const draftFields = 'subject body status reviewed_by reviewed_at';
++
++async function start() {
++  const [portValue, draftFile, frontend] = process.argv.slice(2);
++  const mongoPort = Number(portValue);
++  if (!Number.isInteger(mongoPort) || mongoPort < 1 || mongoPort > 65535 || !draftFile || !frontend) {
++    throw new Error('Usage: node dist/pilot-review.js MONGO_PORT SYNTHETIC_DRAFT_JSON FRONTEND_DIST');
++  }
++  const draft = JSON.parse(await readFile(draftFile, 'utf8'));
++  if (draft.product !== 'Synthetic Fleet Cover' || draft.status !== 'pending' ||
++      typeof draft.subject !== 'string' || typeof draft.body !== 'string') {
++    throw new Error('Expected the synthetic recommendation draft');
++  }
++
++  process.env.JWT_SECRET = randomBytes(32).toString('hex');
++  const password = randomBytes(18).toString('base64url');
++  const dbName = `bh_review_pilot_${randomBytes(12).toString('hex')}`;
++  await mongoose.connect(`mongodb://127.0.0.1:${mongoPort}/${dbName}`, {
++    directConnection: true,
++    serverSelectionTimeoutMS: 3000,
++  });
++  const reviewer = await User.create({ email: reviewEmail, password: await bcrypt.hash(password, 10), role: 'admin' });
++  await Message.insertMany(['A', 'B'].map(label => ({
++    conversation_id: new mongoose.Types.ObjectId(),
++    body: draft.body,
++    subject: `${draft.subject} ${label}`,
++    sender: 'ai',
++    direction: 'sent',
++    status: 'pending',
++  })));
++
++  const app = express();
++  app.disable('x-powered-by');
++  app.use(express.json({ limit: '4kb' }));
++  app.post('/api/auth/login', login);
++  const reviews = express.Router();
++  reviews.use(authenticate, authorize(['admin']));
++  reviews.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
++  const withReviewer = <T extends { reviewed_by?: string }>(draft: T) => ({
++    ...draft,
++    reviewer_email: draft.reviewed_by === String(reviewer._id) ? reviewer.email : undefined,
++  });
++  reviews.get('/', async (_req, res) => {
++    const rows = await Message.find().select(draftFields).sort({ subject: 1 }).lean();
++    res.json(rows.map(withReviewer));
++  });
++  reviews.patch('/:id', async (req, res) => {
++    const { id } = req.params;
++    const decision = req.body?.decision;
++    if (!mongoose.isObjectIdOrHexString(id) || !['validated', 'rejected'].includes(decision)) {
++      return res.status(400).json({ error: 'Décision ou brouillon invalide.' });
++    }
++    const updated = await Message.findOneAndUpdate(
++      { _id: id, sender: 'ai', status: 'pending' },
++      {
++        $set: { status: decision, reviewed_by: String(req.user._id) },
++        $currentDate: { reviewed_at: true },
++      },
++      { new: true, runValidators: true },
++    ).select(draftFields).lean();
++    if (!updated) return res.status(409).json({ error: 'Ce brouillon ne peut plus être validé.' });
++    res.json(withReviewer(updated));
++  });
++  app.use('/api/validation/pilot', reviews);
++  app.use('/api', (_req, res) => { res.status(404).json({ error: 'Route inconnue.' }); });
++  const frontendPath = resolve(frontend);
++  app.use(express.static(frontendPath, { index: false }));
++  app.get(['/', '/login', '/validation'], (_req, res) => { res.sendFile(resolve(frontendPath, 'index.html')); });
++
++  const server = app.listen(0, '127.0.0.1', () => {
++    const address = server.address();
++    if (!address || typeof address === 'string') return;
++    console.log(JSON.stringify({ url: `http://127.0.0.1:${address.port}`, email: reviewEmail, password }));
++  });
++  const stop = () => server.close(async () => {
++    await mongoose.connection.dropDatabase();
++    await mongoose.disconnect();
++  });
++  process.once('SIGTERM', stop);
++  process.once('SIGINT', stop);
++}
++
++start().catch(async error => {
++  console.error(error);
++  await mongoose.disconnect();
++  process.exitCode = 1;
++});
+diff --git a/backend/tsconfig.pilot.json b/backend/tsconfig.pilot.json
+new file mode 100644
+index 0000000..ff0a533
+--- /dev/null
++++ b/backend/tsconfig.pilot.json
+@@ -0,0 +1,4 @@
++{
++  "extends": "./tsconfig.json",
++  "include": ["src/pilot-review.ts", "src/middleware/config.middleware.ts"]
++}
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index f6916d1..b7e906f 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
+ import { Toaster as Sonner } from "@/components/ui/sonner";
+ import { TooltipProvider } from "@/components/ui/tooltip";
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+-import { BrowserRouter, Routes, Route } from "react-router-dom";
++import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+ import Index from "./pages/Index";
+ import Historique from "./pages/Historique";
+ import Validation from "./pages/Validation";
+@@ -10,8 +10,11 @@ import Analytics from "./pages/Analytics";
+ import NotFound from "./pages/NotFound";
+ import { DashboardLayout } from "./components/DashboardLayout";
+ import Login from "./components/Login"
++import PilotReview from "./pages/PilotReview";
++import PilotLogin from "./pages/PilotLogin";
+ 
+ const queryClient = new QueryClient();
++const pilot = import.meta.env.VITE_DRAFT_REVIEW_PILOT === "true";
+ 
+ const App = () => (
+   <QueryClientProvider client={queryClient}>
+@@ -20,8 +23,8 @@ const App = () => (
+       <Sonner />
+       <BrowserRouter>
+         <Routes>
+-          <Route path="/login" element={<Login />} />
+-          <Route path="/" element={<Index />} />
++          <Route path="/login" element={pilot ? <PilotLogin /> : <Login />} />
++          <Route path="/" element={pilot ? <Navigate to="/validation" replace /> : <Index />} />
+           <Route path="/historique" element={
+             <DashboardLayout>
+               <Historique />
+@@ -29,7 +32,7 @@ const App = () => (
+           } />
+           <Route path="/validation" element={
+             <DashboardLayout>
+-              <Validation />
++              {pilot ? <PilotReview /> : <Validation />}
+             </DashboardLayout>
+           } />
+           <Route path="/analytics" element={
+diff --git a/frontend/src/components/DashboardSidebar.tsx b/frontend/src/components/DashboardSidebar.tsx
+index 713ead8..8a47da0 100644
+--- a/frontend/src/components/DashboardSidebar.tsx
++++ b/frontend/src/components/DashboardSidebar.tsx
+@@ -61,7 +61,7 @@ export function DashboardSidebar() {
+           </SidebarGroupLabel>
+           <SidebarGroupContent>
+             <SidebarMenu>
+-              {menuItems.map((item) => (
++              {menuItems.filter((item) => import.meta.env.VITE_DRAFT_REVIEW_PILOT !== "true" || item.url === "/validation").map((item) => (
+                 <SidebarMenuItem key={item.title}>
+                   <SidebarMenuButton asChild className="text-white hover:bg-white/10 hover:text-white">
+                     <NavLink 
+@@ -84,4 +84,4 @@ export function DashboardSidebar() {
+       </SidebarContent>
+     </Sidebar>
+   )
+-}
+\ No newline at end of file
++}
+diff --git a/frontend/src/pages/PilotLogin.tsx b/frontend/src/pages/PilotLogin.tsx
+new file mode 100644
+index 0000000..04ef2ef
+--- /dev/null
++++ b/frontend/src/pages/PilotLogin.tsx
+@@ -0,0 +1,49 @@
++import { useState, type FormEvent } from "react";
++import { useNavigate } from "react-router-dom";
++import { Button } from "@/components/ui/button";
++import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++
++export default function PilotLogin() {
++  const navigate = useNavigate();
++  const [error, setError] = useState("");
++  const [busy, setBusy] = useState(false);
++
++  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    const credentials = new FormData(event.currentTarget);
++    setBusy(true);
++    setError("");
++    try {
++      const response = await fetch("/api/auth/login", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify(Object.fromEntries(credentials)),
++      });
++      const result = await response.json();
++      if (!response.ok) throw new Error(result.error);
++      localStorage.setItem("token", result.token);
++      localStorage.setItem("user", JSON.stringify(result.user));
++      navigate("/validation", { replace: true });
++    } catch (error) {
++      setError(error instanceof Error ? error.message : "La connexion a échoué.");
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return <main className="min-h-screen grid place-items-center px-4 bg-gradient-to-br from-background to-bh-light-blue">
++    <Card className="w-full max-w-md">
++      <CardHeader><CardTitle>Connexion au pilote</CardTitle></CardHeader>
++      <CardContent>
++        <form onSubmit={handleSubmit} className="space-y-4">
++          <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
++          <div><Label htmlFor="password">Mot de passe</Label><Input id="password" name="password" type="password" required /></div>
++          {error && <p role="alert" className="text-destructive">{error}</p>}
++          <Button type="submit" disabled={busy}>Se connecter</Button>
++        </form>
++      </CardContent>
++    </Card>
++  </main>;
++}
+diff --git a/frontend/src/pages/PilotReview.tsx b/frontend/src/pages/PilotReview.tsx
+new file mode 100644
+index 0000000..5e816e1
+--- /dev/null
++++ b/frontend/src/pages/PilotReview.tsx
+@@ -0,0 +1,92 @@
++import { useEffect, useState } from "react";
++import { Navigate } from "react-router-dom";
++import { Button } from "@/components/ui/button";
++import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
++
++type Decision = "validated" | "rejected";
++
++interface Draft {
++  _id: string;
++  subject: string;
++  body: string;
++  status: "pending" | Decision;
++  reviewed_by?: string;
++  reviewed_at?: string;
++  reviewer_email?: string;
++}
++
++const endpoint = "/api/validation/pilot";
++
++export default function PilotReview() {
++  const token = localStorage.getItem("token");
++  const [drafts, setDrafts] = useState<Draft[] | null>(null);
++  const [openId, setOpenId] = useState<string>();
++  const [busy, setBusy] = useState(false);
++  const [expired, setExpired] = useState(false);
++  const [error, setError] = useState("");
++
++  useEffect(() => {
++    if (!token) return;
++    const request = new AbortController();
++    fetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, signal: request.signal })
++      .then(async response => {
++        if (response.status === 401) { localStorage.removeItem("token"); setExpired(true); return; }
++        if (!response.ok) throw new Error("Impossible de charger les brouillons.");
++        setDrafts(await response.json());
++      })
++      .catch(error => { if (!request.signal.aborted) setError(error.message); });
++    return () => request.abort();
++  }, [token]);
++
++  if (!token || expired) return <Navigate to="/login" replace />;
++
++  const draft = drafts?.find(row => row._id === openId);
++
++  async function record(decision: Decision) {
++    if (!draft || busy) return;
++    setBusy(true);
++    setError("");
++    try {
++      const response = await fetch(`${endpoint}/${draft._id}`, {
++        method: "PATCH",
++        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
++        body: JSON.stringify({ decision }),
++      });
++      if (response.status === 401) { localStorage.removeItem("token"); setExpired(true); return; }
++      const result = await response.json();
++      if (!response.ok) throw new Error(result.error);
++      setDrafts(rows => rows?.map(row => row._id === result._id ? result : row) ?? null);
++    } catch (error) {
++      setError(error instanceof Error ? error.message : "Impossible d’enregistrer la décision.");
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return <div className="p-6 space-y-6">
++    <h2 className="text-2xl font-semibold">Validation des brouillons synthétiques</h2>
++    {error && <p role="alert" className="text-destructive">{error}</p>}
++    {drafts === null && !error && <p>Chargement des brouillons…</p>}
++    <ul className="space-y-2">
++      {drafts?.map(row => <li key={row._id}>
++        <Button variant="outline" aria-expanded={row._id === openId} onClick={() => setOpenId(row._id)}>
++          {row.subject} · {row.status}
++        </Button>
++      </li>)}
++    </ul>
++    {draft && <Card>
++      <CardHeader><CardTitle>{draft.subject}</CardTitle></CardHeader>
++      <CardContent className="space-y-4">
++        <p className="whitespace-pre-wrap">{draft.body}</p>
++        <p>Statut <strong>{draft.status}</strong></p>
++        {draft.status === "pending" ? <div className="flex gap-2">
++          <Button disabled={busy} onClick={() => record("validated")}>Approuver</Button>
++          <Button disabled={busy} variant="destructive" onClick={() => record("rejected")}>Rejeter</Button>
++        </div> : <dl>
++          <dt>Réviseur</dt><dd>{draft.reviewer_email ?? draft.reviewed_by}</dd>
++          <dt>Décision enregistrée (UTC)</dt><dd><time dateTime={draft.reviewed_at}>{draft.reviewed_at}</time></dd>
++        </dl>}
++      </CardContent>
++    </Card>}
++  </div>;
++}

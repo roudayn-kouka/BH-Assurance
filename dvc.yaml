@@ -1,0 +1,37 @@
+# Two batch pipelines only. Run with `dvc repro` (after `dvc init` and `dvc remote add -d storage $DVC_REMOTE`).
+stages:
+  data_rag:
+    cmd: python -m mlops.data_rag.run
+    deps:
+      - data/rag_docs
+      - mlops/data_rag
+      - mlops/common
+      - mlops/data_rag/reference_questions.yaml
+    params:
+      - mlops/configs/rag.yaml:
+      - mlops/configs/validation.yaml:
+          - rag
+    outs:
+      - artifacts/rag/manifests:
+          persist: true
+    metrics:
+      - artifacts/rag/reports/last_run.json:
+          cache: false
+
+  rl:
+    cmd: python -m mlops.rl.run
+    deps:
+      - mlops/rl
+      - mlops/common
+    params:
+      - mlops/configs/rl.yaml:
+      - mlops/configs/validation.yaml:
+          - rl
+    outs:
+      - artifacts/rl/models:
+          persist: true
+      - artifacts/rl/manifests:
+          persist: true
+    metrics:
+      - artifacts/rl/reports/last_run.json:
+          cache: false

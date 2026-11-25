@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, "feature/**"]
+  pull_request:
+
+env:
+  # lint gate covers the Next-BH 2.0 MLOps code; legacy modules and the pilot scripts
+  # (checked by draft-review.yml / staging-pilot.yml) are not reformatted
+  LINT_PATHS: >-
+    mlops policy_service scripts/smoke_policy_service.py scripts/nextbh.py
+    scripts/generate_synthetic_datasets.py tests agent/orchestrator.py agent/compliance.py
+    agent/feature_flags.py agent/utils/policy_client.py agent/utils/event_publisher.py
+    agent/utils/llm_output.py agent/tests
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check $LINT_PATHS
+      - name: Unit, schema and scenario tests
+        run: pytest
+      - name: Syntax check of legacy modules
+        run: python -m compileall -q agent api_datasets
+
+  rl-smoke:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt pandas
+      - name: RL pipeline (quick, LinUCB) — exit 2 = candidate rejected by gates, still a valid run
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/artifacts
+        run: |
+          python -m mlops.rl.run --algorithms linucb --quick || [ $? -eq 2 ]
+          cat "$ARTIFACT_ROOT/rl/reports/last_run.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rl-smoke-report
+          path: ${{ runner.temp }}/artifacts/rl/reports
+
+  docker:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build policy-service image
+        run: docker build -f policy_service/Dockerfile -t next-bh/policy-service:${{ github.sha }} .
+      - name: Smoke test (no approved model → rule fallback must still answer)
+        run: |
+          docker run -d --name policy -p 8010:8010 next-bh/policy-service:${{ github.sha }}
+          for i in $(seq 1 30); do curl -sf localhost:8010/health && break; sleep 2; done
+          python scripts/smoke_policy_service.py --url http://localhost:8010
+      - if: always()
+        run: docker logs policy || true

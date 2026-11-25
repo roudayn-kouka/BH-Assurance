@@ -1,0 +1,58 @@
+name: Synthetic draft review
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  draft-review:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7.0@sha256:884c055bff8b7144ca44830d01826facd3083b33c4dea44b94a1476c62de3c32
+        ports:
+          - 27017/tcp
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 2s --health-timeout 5s --health-retries 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/smoke-requirements.txt -r scripts/agent-smoke-requirements.txt -r scripts/draft-review-requirements.txt
+      - run: python -m pip check
+      - run: env -i PATH="$PATH" python -B scripts/demo_recommendation.py
+      - run: env -i PATH="$PATH" python -B scripts/check_draft_decisions.py --port "$MONGO_PORT"
+        env:
+          MONGO_PORT: ${{ job.services.mongo.ports[27017] }}
+      - run: env -i PATH="$PATH" python -B scripts/demo_draft_review.py --port "$MONGO_PORT"
+        env:
+          MONGO_PORT: ${{ job.services.mongo.ports[27017] }}
+
+  dashboard-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: python -m pip install -r scripts/smoke-requirements.txt -r scripts/agent-smoke-requirements.txt
+      - name: Install the Chromium test runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/bh-browser" --ignore-scripts --no-audit --no-fund playwright@1.62.1
+          "$RUNNER_TEMP/bh-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify approval and rejection in the dashboard
+        run: NODE_PATH="$RUNNER_TEMP/bh-browser/node_modules" bash scripts/check_dashboard_review.sh "$(which python)"

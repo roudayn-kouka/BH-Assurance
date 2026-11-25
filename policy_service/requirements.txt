@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.5
+pyyaml>=6
+numpy>=1.26
+gymnasium>=0.29
+sb3-contrib>=2.3   # only needed to serve maskable_ppo bundles

@@ -1,0 +1,234 @@
+[
+  {
+    "case_id": "CLEAR-01",
+    "sector": "Logistique",
+    "activity": "Livraison urbaine avec des utilitaires détenus par l’entreprise",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "owned_delivery_vans"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-02",
+    "sector": "Maintenance",
+    "activity": "Voitures de service détenues et utilisées sur le territoire national",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "owned_service_cars",
+      "domestic_fleet"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-03",
+    "sector": "Distribution",
+    "activity": "Tournées nationales en fourgons appartenant à l’entreprise",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "owned_delivery_vans",
+      "domestic_fleet"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-04",
+    "sector": "Conseil",
+    "activity": "Dommages d’incendie aux bureaux déclarés",
+    "candidate": "Synthetic Office Cover",
+    "needs": [
+      "office_premises",
+      "office_fire"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-05",
+    "sector": "Comptabilité",
+    "activity": "Dommages aux bureaux et inventaire de leur mobilier déclaré",
+    "candidate": "Synthetic Office Cover",
+    "needs": [
+      "office_premises",
+      "office_contents"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-06",
+    "sector": "Architecture",
+    "activity": "Matériel de bureau utilisé dans les locaux déclarés",
+    "candidate": "Synthetic Office Cover",
+    "needs": [
+      "office_contents"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-07",
+    "sector": "Grossiste",
+    "activity": "Marchandises emballées acheminées par route sur le territoire national",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [
+      "domestic_road_cargo",
+      "packaged_goods"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "CLEAR-08",
+    "sector": "Fabrication",
+    "activity": "Dommages matériels pendant le chargement et transport routier national",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [
+      "loading_damage",
+      "domestic_road_cargo"
+    ],
+    "expected": "recommended"
+  },
+  {
+    "case_id": "AMBIG-01",
+    "sector": "Transport",
+    "activity": "Demande de protection pour des véhicules, sans statut de détention",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-02",
+    "sector": "Services",
+    "activity": "Déplacements professionnels sans localisation ni parc précisés",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-03",
+    "sector": "Réparation",
+    "activity": "Flotte mixte, utilisation principale à préciser",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-04",
+    "sector": "Design",
+    "activity": "Demande pour le nouveau bureau, biens et risques non identifiés",
+    "candidate": "Synthetic Office Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-05",
+    "sector": "Conseil",
+    "activity": "Protection du local ou responsabilité de l’occupant, à préciser",
+    "candidate": "Synthetic Office Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-06",
+    "sector": "Informatique",
+    "activity": "Bureaux et interventions distantes, objet de la demande inconnu",
+    "candidate": "Synthetic Office Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-07",
+    "sector": "Export",
+    "activity": "Expédition annoncée, mode et trajet encore inconnus",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "AMBIG-08",
+    "sector": "Distribution",
+    "activity": "Marchandises à protéger, phase d’entreposage ou de transport non précisée",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [],
+    "expected": "clarification_required"
+  },
+  {
+    "case_id": "NOFIT-01",
+    "sector": "Transport",
+    "activity": "Flotte d’autocars affrétés pour des voyages transfrontaliers",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "cross_border_passengers"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-02",
+    "sector": "Construction",
+    "activity": "Dommages aux engins lourds loués",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "leased_heavy_equipment"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-03",
+    "sector": "Livraison",
+    "activity": "Fourgons détenus et couverture indispensable des remorques louées",
+    "candidate": "Synthetic Fleet Cover",
+    "needs": [
+      "owned_delivery_vans",
+      "leased_trailer_damage"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-04",
+    "sector": "Services",
+    "activity": "Rançongiciels sur les postes du bureau",
+    "candidate": "Synthetic Office Cover",
+    "needs": [
+      "cyber_ransom"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-05",
+    "sector": "Restauration",
+    "activity": "Pertes d’exploitation après panne de chambre froide",
+    "candidate": "Synthetic Office Cover",
+    "needs": [
+      "refrigeration_interruption"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-06",
+    "sector": "Transit",
+    "activity": "Marchandises en conteneur sur un trajet maritime",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [
+      "marine_cargo"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-07",
+    "sector": "Alimentaire",
+    "activity": "Transport routier national de colis avec garantie de chaîne du froid",
+    "candidate": "Synthetic Cargo Cover",
+    "needs": [
+      "domestic_road_cargo",
+      "temperature_excursion"
+    ],
+    "expected": "insufficient_evidence"
+  },
+  {
+    "case_id": "NOFIT-08",
+    "sector": "Recherche",
+    "activity": "Responsabilité pour exploitation d’un drone",
+    "candidate": "Synthetic Aviation Cover",
+    "needs": [
+      "drone_liability"
+    ],
+    "expected": "insufficient_evidence"
+  }
+]
